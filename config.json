@@ -1,0 +1,7 @@
+{
+  "xrhServer": "localhost",
+  "xrhPort": 2222,
+  "ssl": false,
+  "autoReconnectTimer": 5000,
+  "deviceId": "galaxy-note"
+}
