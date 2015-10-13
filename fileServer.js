@@ -18,6 +18,7 @@ module.exports = (function() {
       filePath = './index.html';
     
     var extname = path.extname(filePath);
+    var encoding = 'utf8';
     var contentType = 'text/html';
     switch (extname) {
       case '.js':
@@ -40,17 +41,20 @@ module.exports = (function() {
         break;
       case '.ttf':
         contentType = 'application/x-font-ttf';
+        encoding = 'binary';
         break;
       case '.woff':
         contentType = 'application/font-woff';
+        encoding = 'binary';
         break;
       case '.woff2':
         contentType = 'application/font-woff2';
+        encoding = 'binary';
         break;
     }
     
     var fullPath = path.join(_basePath, filePath);
-    fs.readFile(fullPath, "binary", function(error, content) {
+    fs.readFile(fullPath, encoding, function(error, content) {
       if (error) {
         if(error.code == 'ENOENT'){
           console.log("file not found: " + fullPath);
@@ -68,7 +72,7 @@ module.exports = (function() {
       else {
         console.log("sending: " + fullPath);
         response.writeHead(200, { 'Content-Type': contentType });
-        response.end(content, 'binary');
+        response.end(content, encoding);
       }
     });
     
