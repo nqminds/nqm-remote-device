@@ -1,0 +1,22 @@
+{
+  "name": "nqm-remote-device",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nqminds/nqm-remote-device"
+  },
+  "author": "toby.ealden@gmail.com",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/nqminds/nqm-remote-device/issues"
+  },
+  "homepage": "https://github.com/nqminds/nqm-remote-device",
+  "dependencies": {
+    "ws": "^0.8.0"
+  }
+}
