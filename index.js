@@ -35,6 +35,17 @@ _ddpclient.connect(function(error, reconnect) {
   }
 });
 
+setTimeout(function() {
+  var exec = require('child_process').exec;
+  exec('node -v', function(error, stdout, stderr) {
+    console.log('stdout: ' + stdout);
+    console.log('stderr: ' + stderr);
+    if (error !== null) {
+      console.log('exec error: ' + error);
+    }
+  });
+},20000);
+
 //var ws = require("ws");
 //
 //var socket = new ws("ws://localhost:7999","byod");
