@@ -18,6 +18,7 @@
   "homepage": "https://github.com/nqminds/nqm-remote-device",
   "dependencies": {
     "ddp": "git://github.com/nqminds/node-ddp-client",
+    "ddp-server-reactive": "git://github.com/nqminds/DDP-Server-Reactive",
     "ws": "^0.8.0"
   }
 }
