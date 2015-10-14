@@ -13,9 +13,9 @@ module.exports = (function() {
       "<%}%>" +
     "</ul>"
   
-  return function(menuItems) {
-    if (menuItems.length) {
-      return TemplateEngine(menuTemplate, menuItems);
+  return function(menu) {
+    if (menu.items && menu.items.length > 0) {
+      return TemplateEngine(menuTemplate, menu);
     } else {
       return "<ul></ul>";
     }

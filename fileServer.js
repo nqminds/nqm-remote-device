@@ -138,7 +138,7 @@ module.exports = (function() {
       
       if (filePath === _rootPath) {
         if (_accessToken.length === 0) {
-          sendLayout(response, [], "login.html", {});
+          sendLayout(response, {}, "login.html", {});
         } else {
           var menuItems = {
             items: [
