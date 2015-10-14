@@ -17,7 +17,7 @@
   },
   "homepage": "https://github.com/nqminds/nqm-remote-device",
   "dependencies": {
-    "ddp": "^0.11.0",
+    "ddp": "git://github.com/nqminds/node-ddp-client",
     "ws": "^0.8.0"
   }
 }

@@ -16,7 +16,7 @@ var _ddpclient = new DDPClient({
     autoReconnectTimer : config.autoReconnectTimer || 5000,
     maintainCollections : true,
     ddpVersion : '1',
-    useSockJs: true
+    useSockJs: false
   });
 
 var _connected = false;
