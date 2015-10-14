@@ -29,8 +29,18 @@ _ddpclient.connect(function(error, reconnect) {
       console.log("DDP re-connected");
     }
     console.log("DDP connected");
-    _ddpclient.subscribe("datasets",[],function() {
-      console.log("%j",_ddpclient.collections.datasets);
+    _ddpclient.call("/app/auth", [config.capCredentials], function(err, result) {
+      console.log("callback");
+      if (err) {
+        console.log("/app/auth error %s", err.message);
+      } else {
+        console.log("/app/auth result: %s", JSON.stringify(result));
+        _ddpclient.subscribe("datasets",[{accessToken: result.id}],function() {
+          console.log("%j",_ddpclient.collections.Dataset);
+        });
+      }
+    }, function() {
+      console.log("updated callback");
     });
   }
 });

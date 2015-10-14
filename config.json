@@ -3,5 +3,6 @@
   "xrhPort": 2222,
   "ssl": false,
   "autoReconnectTimer": 5000,
-  "deviceId": "galaxy-note"
+  "deviceId": "galaxy-note",
+  "capCredentials": "VJx8m87Dle:password"
 }
