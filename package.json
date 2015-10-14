@@ -19,6 +19,8 @@
   "dependencies": {
     "ddp": "git://github.com/nqminds/node-ddp-client",
     "ddp-server-reactive": "git://github.com/nqminds/DDP-Server-Reactive",
+    "debug": "^2.2.0",
+    "octet": "^3.0.0",
     "ws": "^0.8.0"
   }
 }

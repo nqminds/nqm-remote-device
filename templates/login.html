@@ -1,0 +1,12 @@
+<script>
+    $(function() {
+        $("#googleBtn").click(function(e) {
+            e.preventDefault();
+            window.location.replace("/auth");
+            return false;
+        })
+    });
+</script>
+<h4>please login</h4>
+
+<button class="mui-btn mui-btn--primary" id="googleBtn">login with google</button>

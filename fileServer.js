@@ -4,7 +4,8 @@
   
 module.exports = (function() {
   "use strict";
-  
+
+  var log = require("debug")("fileServer");
   var http = require("http");
   var https = require("https");
   var fs = require("fs");
@@ -12,15 +13,22 @@ module.exports = (function() {
   var util = require("util");
   var url = require("url");
   var querystring = require("querystring");
+  var TemplateEngine = require("./templateEngine");
+  var menuCompiler = require("./menuCompiler");
+  var layoutCompiler = require("./layoutCompiler");
   var _basePath = "./content";
+  var _templatePath = "./templates";
   var _accessToken = "";
+  var _rootPath = "./index.html";
+  var _authPath = "./auth";
+  var _layout = fs.readFileSync("./layout.html").toString();
   
   var basicRequest = function(options, data, onResult)
   {
     var protocol = options.port == 443 ? https : http;
     var req = protocol.request(options, function(res) {
       var output = '';
-      console.log(options.host + ':' + res.statusCode);
+      log(options.host + ':' + res.statusCode);
       res.setEncoding('utf8');
       
       res.on('data', function (chunk) {
@@ -33,7 +41,7 @@ module.exports = (function() {
     });
     
     req.on('error', function(err) {
-      console.log("request error: ",err);
+      log("request error: ",err);
     });
     
     if (data) {
@@ -43,7 +51,23 @@ module.exports = (function() {
     req.end();
   };
   
-  var sendFile = function(filePath, response) {
+  var sendLayout = function(response, menuItems, contentFile, contentData) {
+    var menu = menuCompiler(menuItems);
+    fs.readFile(path.join(_templatePath,contentFile), function(err, contentTemplate) {
+      var content = TemplateEngine(contentTemplate.toString(), contentData);
+      var page = layoutCompiler(_layout, menu, content);
+      sendContent(response, page);
+    });
+  };
+  
+  var sendContent = function(response, content, contentType, encoding) {
+    contentType = contentType || "text/html";
+    encoding = encoding || "utf8";
+    response.writeHead(200, { "Content-Type": contentType });
+    response.end(content, encoding);
+  };
+  
+  var sendFile = function(response, filePath) {
     var encoding = "utf8";
     var contentType = "text/html";
     var extname = path.extname(filePath);
@@ -84,7 +108,7 @@ module.exports = (function() {
     fs.readFile(fullPath, encoding, function(error, content) {
       if (error) {
         if(error.code == "ENOENT"){
-          console.log("file not found: " + fullPath);
+          log("file not found: " + fullPath);
           fs.readFile("./404.html", function(error, content) {
             response.writeHead(200, { "Content-Type": contentType });
             response.end(content, "utf8");
@@ -97,25 +121,40 @@ module.exports = (function() {
         }
       }
       else {
-        console.log("sending: " + fullPath);
-        if (contentType === "text/html" && authCode.length > 0) {
-          content = content.replace("<script>window.authCode = \"\";</script>", util.format("<script>window.authCode = \"%s\";</script>",authCode));
-        }
-        response.writeHead(200, { "Content-Type": contentType });
-        response.end(content, encoding);
+        log("sending: " + fullPath);
+        sendContent(response, content, contentType, encoding);
       }
     });
   };
   
   function start(config) {
     var server = http.createServer(function (request, response) {
-      console.log("request starting...");
-      var authCode = "";
-  
+      log("requesting ", request.url);
+
+      var filePath = "." + request.url;
+      if (filePath === "./") {
+        filePath = _rootPath;
+      }
       
-      if (request.url === "/login") {
-        var oauthURL = util.format("https://accounts.google.com/o/oauth2/auth?response_type=code&client_id=%s&redirect_uri=%s/oauthCB&scope=email%20profile",config.googleClientId,config.hostURL);
-        response.writeHead(301,{ Location: oauthURL });
+      if (filePath === _rootPath) {
+        if (_accessToken.length === 0) {
+          sendLayout(response, [], "login.html", {});
+        } else {
+          var menuItems = {
+            items: [
+              {name: "Apps"},
+              {name: "Config"},
+              {name: "Databases"}
+            ]
+          };
+          var menu = menuCompiler(menuItems);
+          var content = "<p>hello</p>";
+          var page = layoutCompiler(_layout, menu, content);
+          sendContent(response, page);
+        }
+      } else if (filePath === _authPath) {
+        var oauthURL = util.format("https://accounts.google.com/o/oauth2/auth?response_type=code&client_id=%s&redirect_uri=%s/oauthCB&scope=email%20profile", config.googleClientId, config.hostURL);
+        response.writeHead(301, {Location: oauthURL});
         response.end();
       } else if (request.url.indexOf("/oauthCB") === 0) {
         var up = url.parse(request.url);
@@ -138,7 +177,7 @@ module.exports = (function() {
             'grant_type': 'authorization_code'
           };
           basicRequest(options, querystring.stringify(postData), function(status,result) {
-            console.log("status: %d, result: ",result);
+            log("status: %d, result: ",result);
             if (status === 200) {
               var token = JSON.parse(result);
               _accessToken = token.access_token;
@@ -147,18 +186,15 @@ module.exports = (function() {
             response.end();
           });
         } else {
-          sendFile("/login");
+          sendFile(response, "/login");
         }
       } else {
-        var filePath = "." + request.url;
-        if (filePath == "./")
-          filePath = "./index.html";
-        sendFile(filePath);
+        sendFile(response, filePath);
       }
     });
 
     server.listen(8125);
-    console.log("Server running at http://127.0.0.1:8125/");
+    log("Server running at http://127.0.0.1:8125/");
   }
   
   return {
