@@ -16,12 +16,10 @@ module.exports = (function() {
   var TemplateEngine = require("./templateEngine");
   var menuCompiler = require("./menuCompiler");
   var layoutCompiler = require("./layoutCompiler");
+  var _config;
   var _basePath = "./content";
   var _templatePath = "./templates";
   var _accessToken = "";
-  var _rootPath = "/";
-  var _authPath = "auth";
-  var _layout = fs.readFileSync(path.join(_templatePath,"layout.html")).toString();
   var _mainMenu = {
     items: [
       {name: "Apps"},
@@ -31,24 +29,57 @@ module.exports = (function() {
   };
   
   var _router = {
-    "/": function(response, data) {
+    "/": function(request, response, data) {
       if (_accessToken.length === 0) {
-        sendLayoutFile(response, {}, "login.html", {});
+        sendLayout("unauth.html", response);
       } else {
-        sendLayout(response, _mainMenu, "<p>hello world</p>");
+        sendLayout("layout.html", response, _mainMenu, "<p>hello world</p>");
+      }
+    },
+    "/auth": function(request, response) {
+      var oauthURL = util.format("https://accounts.google.com/o/oauth2/auth?response_type=code&client_id=%s&redirect_uri=%s/oauthCB&scope=email%20profile", _config.googleClientId, _config.hostURL);
+      response.writeHead(301, {Location: oauthURL});
+      response.end();
+    },
+    "/oauthCB": function(request, response) {
+      var up = url.parse(request.url);
+      var q = querystring.parse(up.query);
+      if (q.code) {
+        var options = {
+          hostname: 'www.googleapis.com',
+          port:     443,
+          path:     "/oauth2/v3/token",
+          method:   'POST',
+          headers:  {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          }
+        };
+        var postData = {
+          'code':          q.code,
+          'client_id':     _config.googleClientId,
+          'client_secret': _config.googleSecret,
+          'redirect_uri':  _config.hostURL + "/oauthCB",
+          'grant_type':    'authorization_code'
+        };
+        basicRequest(options, querystring.stringify(postData), function (status, result) {
+          log("status: %d, result: ", result);
+          if (status === 200) {
+            var token = JSON.parse(result);
+            _accessToken = token.access_token;
+          }
+          response.writeHead(301, {Location: _config.hostURL});
+          response.end();
+        });
       }
     }
   };
   
-  var route = function(routeName, response, data) {
+  var route = function(routeName, request, response) {
     if (_router[routeName]) {
-      _router[routeName](response, data);
+      _router[routeName](request, response);
       return true;
     } else {
       return false;
-      //response.writeHead(500, { 'Content-Type': 'text/plain' });
-      //response.write("unknown route: " + routeName);
-      //response.end();
     }
   };
   
@@ -83,19 +114,25 @@ module.exports = (function() {
     req.end();
   };
 
-  var sendLayoutFile = function(response, menuItems, contentFile, contentData) {
+  var sendLayoutFile = function(layoutFile, response, menuItems, contentFile, contentData) {
     var menu = menuCompiler(menuItems);
     fs.readFile(path.join(_templatePath,contentFile), function(err, contentTemplate) {
       var content = TemplateEngine(contentTemplate.toString(), contentData);
-      var page = layoutCompiler(_layout, menu, content);
-      sendContent(response, page);
+      fs.readFile(path.join(_templatePath,layoutFile), function(err, layout) {
+        var page = layoutCompiler(layout.toString(), menu, content);
+        sendContent(response, page);
+      });
     });
   };
   
-  var sendLayout = function(response, menuItems, content) {
+  var sendLayout = function(layoutFile, response, menuItems, content) {
+    menuItems = menuItems || {};
+    content = content || "";
     var menu = menuCompiler(menuItems);
-    var page = layoutCompiler(_layout, menu, content);
-    sendContent(response, page);
+    fs.readFile(path.join(_templatePath,layoutFile), function(err, layout) {
+      var page = layoutCompiler(layout.toString(), menu, content);
+      sendContent(response, page);
+    });
   };
   
   var sendContent = function(response, content, contentType, encoding) {
@@ -166,52 +203,13 @@ module.exports = (function() {
   };
   
   function start(config) {
+    _config = config;
     var server = http.createServer(function (request, response) {
       log("requesting ", request.url);
 
-      var filePath = request.url;
+      var filePath = url.parse(request.url).pathname;
       
-      if (route(request.url, response)) {
-        return;
-      }
-      
-      if (filePath === _authPath) {
-        var oauthURL = util.format("https://accounts.google.com/o/oauth2/auth?response_type=code&client_id=%s&redirect_uri=%s/oauthCB&scope=email%20profile", config.googleClientId, config.hostURL);
-        response.writeHead(301, {Location: oauthURL});
-        response.end();
-      } else if (request.url.indexOf("/oauthCB") === 0) {
-        var up = url.parse(request.url);
-        var q = querystring.parse(up.query);
-        if (q.code) {
-          var options = {
-            hostname: 'www.googleapis.com',
-            port: 443,
-            path: "/oauth2/v3/token",
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded'
-            }
-          };
-          var postData = {
-            'code': q.code,
-            'client_id': config.googleClientId,
-            'client_secret': config.googleSecret,
-            'redirect_uri': config.hostURL + "/oauthCB",
-            'grant_type': 'authorization_code'
-          };
-          basicRequest(options, querystring.stringify(postData), function(status,result) {
-            log("status: %d, result: ",result);
-            if (status === 200) {
-              var token = JSON.parse(result);
-              _accessToken = token.access_token;
-            }
-            response.writeHead(301,{ Location: config.hostURL });
-            response.end();
-          });
-        } else {
-          sendFile(response, "/login");
-        }
-      } else {
+      if (!route(filePath, request, response)) {
         sendFile(response, filePath);
       }
     });
