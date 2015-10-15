@@ -72,21 +72,6 @@ _xrhConnection.start(_config, function(err, reconnect) {
   }
 });
 
-
-//// Remove items
-//delete todoList[1]
-//
-//// Create a reactive collection
-//// All the changes below will automatically be sent to subscribers
-//var todoList = server.publish("todolist");
-//
-//// Add items
-//todoList[0] = { title: "Cook dinner", done: false };
-//todoList[1] = { title: "Water the plants", done: true };
-//
-//// Change items
-//todoList[0].done = true;
-
 // Add methods
 _ddpServer.methods({
   test: function() {

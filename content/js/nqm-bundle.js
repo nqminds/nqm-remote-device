@@ -1,80 +1,4 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-/**
- * Created by toby on 14/10/15.
- */
-
-var _ws;
-var _ddp;
-var _minimongo = require("minimongo");
-
-_db = new _minimongo.MemoryDb();
-_db.addCollection("datasets");
-
-_observers = {};
-_ddpObserve = function(collectionName, handler) {
-  if (!_db[collectionName]) {
-    _db.addCollection(collectionName);
-  }
-  if (!_observers[collectionName]) {
-    _observers[collectionName] = [];
-  }
-  _observers[collectionName].push(handler);
-};
-
-var fireObservers = function(evt, collectionName, doc) {
-  if (_observers[collectionName]) {
-    _observers[collectionName].forEach(function(i) {
-      i[evt](doc);
-    })
-  }
-};
-
-var collectionHandler = function(socket) {
-  socket.on("added", function (data) {
-    console.log("added");
-    console.log(data);
-    if (!_db[data.collection]) {
-      _db.addCollection(data.collection);
-    }
-    //data.fields._id = data.id;
-    _db[data.collection].upsert(data.fields);
-    fireObservers("added", data.collection, data.fields);
-  });
-  
-  socket.on("changed", function (data) {
-    if (_db[data.collection]) {
-      _db[data.collection].upsert(data.fields);
-      fireObservers("changed", data.collection, data.fields);
-    } else {
-      console.error("no collection for changed item: " + data.collection);
-    }
-  });
-  
-  socket.on("removed", function (data) {
-    if (_db[data.collection]) {
-      _db[data.collection].remove({id: data.id});
-      fireObservers("removed", data.collection, data.id);
-    } else {
-      console.error("no collection for removed item: " + data.collection);
-    }
-  });
-};
-
-webix.ready(function() {
-  _ws = new WebSocket("ws://" + window.location.host);
-  _ddp = new ddp(_ws);
-  
-  _ddp.connect(function() {
-      collectionHandler(_ddp);
-      _ddp.subscribe("datasets", function () {
-        _db["datasets"].findOne({}, {}, function (apps) {
-          _db.addCollection(apps.store);
-          _ddp.subscribe(apps.store);
-        });
-      });
-    });
-});
-},{"minimongo":2}],2:[function(require,module,exports){
 exports.MemoryDb = require('./lib/MemoryDb');
 exports.LocalStorageDb = require('./lib/LocalStorageDb');
 exports.IndexedDb = require('./lib/IndexedDb');
@@ -83,7 +7,7 @@ exports.RemoteDb = require('./lib/RemoteDb');
 exports.HybridDb = require('./lib/HybridDb');
 exports.utils = require('./lib/utils');
 
-},{"./lib/HybridDb":4,"./lib/IndexedDb":5,"./lib/LocalStorageDb":6,"./lib/MemoryDb":7,"./lib/RemoteDb":8,"./lib/WebSQLDb":9,"./lib/utils":12}],3:[function(require,module,exports){
+},{"./lib/HybridDb":3,"./lib/IndexedDb":4,"./lib/LocalStorageDb":5,"./lib/MemoryDb":6,"./lib/RemoteDb":7,"./lib/WebSQLDb":8,"./lib/utils":11}],2:[function(require,module,exports){
 var _ = require('lodash');
 
 EJSON = {}; // Global!
@@ -411,7 +335,7 @@ EJSON.clone = function (v) {
 
 module.exports = EJSON;
 
-},{"lodash":17}],4:[function(require,module,exports){
+},{"lodash":16}],3:[function(require,module,exports){
 
 /*
 
@@ -758,7 +682,7 @@ HybridCollection = (function() {
 
 })();
 
-},{"./utils":12,"lodash":17}],5:[function(require,module,exports){
+},{"./utils":11,"lodash":16}],4:[function(require,module,exports){
 var Collection, IDBStore, IndexedDb, async, compileSort, processFind, utils, _;
 
 _ = require('lodash');
@@ -1209,7 +1133,7 @@ Collection = (function() {
 
 })();
 
-},{"./selector":11,"./utils":12,"async":13,"idb-wrapper":15,"lodash":17}],6:[function(require,module,exports){
+},{"./selector":10,"./utils":11,"async":12,"idb-wrapper":14,"lodash":16}],5:[function(require,module,exports){
 var Collection, LocalStorageDb, compileSort, processFind, utils, _;
 
 _ = require('lodash');
@@ -1508,7 +1432,7 @@ Collection = (function() {
 
 })();
 
-},{"./selector":11,"./utils":12,"lodash":17}],7:[function(require,module,exports){
+},{"./selector":10,"./utils":11,"lodash":16}],6:[function(require,module,exports){
 var Collection, MemoryDb, compileSort, processFind, utils, _;
 
 _ = require('lodash');
@@ -1718,7 +1642,7 @@ Collection = (function() {
 
 })();
 
-},{"./selector":11,"./utils":12,"lodash":17}],8:[function(require,module,exports){
+},{"./selector":10,"./utils":11,"lodash":16}],7:[function(require,module,exports){
 var $, Collection, RemoteDb, async, jQueryHttpClient, utils, _;
 
 _ = require('lodash');
@@ -1914,7 +1838,7 @@ Collection = (function() {
 
 })();
 
-},{"./jQueryHttpClient":10,"./utils":12,"async":13,"jquery":16,"lodash":17}],9:[function(require,module,exports){
+},{"./jQueryHttpClient":9,"./utils":11,"async":12,"jquery":15,"lodash":16}],8:[function(require,module,exports){
 var Collection, WebSQLDb, async, compileSort, doNothing, processFind, utils, _;
 
 _ = require('lodash');
@@ -2337,7 +2261,7 @@ Collection = (function() {
 
 })();
 
-},{"./selector":11,"./utils":12,"async":13,"lodash":17}],10:[function(require,module,exports){
+},{"./selector":10,"./utils":11,"async":12,"lodash":16}],9:[function(require,module,exports){
 module.exports = function(method, url, params, data, success, error) {
   var fullUrl, req;
   fullUrl = url + "?" + $.param(params);
@@ -2367,7 +2291,7 @@ module.exports = function(method, url, params, data, success, error) {
   });
 };
 
-},{}],11:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 /*
 ========================================
 Meteor is licensed under the MIT License
@@ -3104,7 +3028,7 @@ LocalCollection._compileSort = function (spec) {
 exports.compileDocumentSelector = compileDocumentSelector;
 exports.compileSort = LocalCollection._compileSort;
 
-},{"./EJSON":3,"lodash":17}],12:[function(require,module,exports){
+},{"./EJSON":2,"lodash":16}],11:[function(require,module,exports){
 var async, bowser, compileDocumentSelector, compileSort, deg2rad, getDistanceFromLatLngInM, isLocalStorageSupported, pointInPolygon, processGeoIntersectsOperator, processNearOperator, _;
 
 _ = require('lodash');
@@ -3405,7 +3329,7 @@ exports.regularizeUpsert = function(docs, bases, success, error) {
   return [items, success, error];
 };
 
-},{"./HybridDb":4,"./IndexedDb":5,"./LocalStorageDb":6,"./MemoryDb":7,"./WebSQLDb":9,"./selector":11,"async":13,"bowser":14,"lodash":17}],13:[function(require,module,exports){
+},{"./HybridDb":3,"./IndexedDb":4,"./LocalStorageDb":5,"./MemoryDb":6,"./WebSQLDb":8,"./selector":10,"async":12,"bowser":13,"lodash":16}],12:[function(require,module,exports){
 (function (process){
 /*!
  * async
@@ -4467,7 +4391,7 @@ exports.regularizeUpsert = function(docs, bases, success, error) {
 }());
 
 }).call(this,require('_process'))
-},{"_process":18}],14:[function(require,module,exports){
+},{"_process":18}],13:[function(require,module,exports){
 /*!
   * Bowser - a browser detector
   * https://github.com/ded/bowser
@@ -4745,7 +4669,7 @@ exports.regularizeUpsert = function(docs, bases, success, error) {
   return bowser
 });
 
-},{}],15:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 /*global window:false, self:false, define:false, module:false */
 
 /**
@@ -6082,7 +6006,7 @@ exports.regularizeUpsert = function(docs, bases, success, error) {
 
 }, this);
 
-},{}],16:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v2.1.4
  * http://jquery.com/
@@ -15294,7 +15218,7 @@ return jQuery;
 
 }));
 
-},{}],17:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 (function (global){
 /**
  * @license
@@ -22084,7 +22008,83 @@ return jQuery;
 }.call(this));
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],18:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
+/**
+ * Created by toby on 14/10/15.
+ */
+
+var _ws;
+var _ddp;
+var _minimongo = require("minimongo");
+
+_db = new _minimongo.MemoryDb();
+_db.addCollection("datasets");
+
+_observers = {};
+_ddpObserve = function(collectionName, handler) {
+  if (!_db[collectionName]) {
+    _db.addCollection(collectionName);
+  }
+  if (!_observers[collectionName]) {
+    _observers[collectionName] = [];
+  }
+  _observers[collectionName].push(handler);
+};
+
+var fireObservers = function(evt, collectionName, doc) {
+  if (_observers[collectionName]) {
+    _observers[collectionName].forEach(function(i) {
+      i[evt](doc);
+    })
+  }
+};
+
+var collectionHandler = function(socket) {
+  socket.on("added", function (data) {
+    console.log("added");
+    console.log(data);
+    if (!_db[data.collection]) {
+      _db.addCollection(data.collection);
+    }
+    //data.fields._id = data.id;
+    _db[data.collection].upsert(data.fields);
+    fireObservers("added", data.collection, data.fields);
+  });
+  
+  socket.on("changed", function (data) {
+    if (_db[data.collection]) {
+      _db[data.collection].upsert(data.fields);
+      fireObservers("changed", data.collection, data.fields);
+    } else {
+      console.error("no collection for changed item: " + data.collection);
+    }
+  });
+  
+  socket.on("removed", function (data) {
+    if (_db[data.collection]) {
+      _db[data.collection].remove({id: data.id});
+      fireObservers("removed", data.collection, data.id);
+    } else {
+      console.error("no collection for removed item: " + data.collection);
+    }
+  });
+};
+
+webix.ready(function() {
+  _ws = new WebSocket("ws://" + window.location.host);
+  _ddp = new ddp(_ws);
+  
+  _ddp.connect(function() {
+      collectionHandler(_ddp);
+      _ddp.subscribe("datasets", function () {
+        _db["datasets"].findOne({}, {}, function (apps) {
+          _db.addCollection(apps.store);
+          _ddp.subscribe(apps.store);
+        });
+      });
+    });
+});
+},{"minimongo":1}],18:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -22177,4 +22177,4 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}]},{},[1]);
+},{}]},{},[17]);
