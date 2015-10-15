@@ -37,13 +37,14 @@ var observeBindings = function(socket) {
     if (!_db[data.collection]) {
       _db.addCollection(data.collection);
     }
-    //data.fields._id = data.id;
+    data.fields._id = data.id;
     _db[data.collection].upsert(data.fields);
     fireObservers("added", data.collection, data.fields);
   });
   
   socket.on("changed", function (data) {
     if (_db[data.collection]) {
+      data.fields._id = data.id;
       _db[data.collection].upsert(data.fields);
       fireObservers("changed", data.collection, data.fields);
     } else {

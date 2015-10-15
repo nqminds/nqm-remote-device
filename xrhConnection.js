@@ -117,6 +117,7 @@ module.exports = (function() {
         handlers.removed(id, oldValue);
       }
     };
+    return observer;
   };
   
   var getCollection = function(name) {

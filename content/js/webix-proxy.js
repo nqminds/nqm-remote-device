@@ -22,7 +22,7 @@ webix.proxy.ddp = {
         //event triggered by data saving in the same component
         if (view.ddp_saving) return;
         
-        post.id = post._id+"";
+        post.id = post._id + "";
         delete post._id;
         
         //do not trigger data saving events
@@ -35,7 +35,7 @@ webix.proxy.ddp = {
         //event triggered by data saving in the same component
         if (view.ddp_saving) return;
         
-        var id = post._id+"";
+        var id = post._id + "";
         delete post._id;
         
         //do not trigger data saving events
@@ -50,7 +50,7 @@ webix.proxy.ddp = {
         
         //do not trigger data saving events
         webix.dp(view).ignore(function(){
-          view.remove(id+"");
+          view.remove(id + "");
         });
       }
     });

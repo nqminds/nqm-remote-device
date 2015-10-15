@@ -2,12 +2,16 @@
  * Created by toby on 13/10/15.
  */
 
+var log = require("debug")("index");
+var _ = require("lodash");
 var _config = require("./config.json");
 var _fileServer;
 var _ddpServer;
 var _xrhAccessToken;
 var _datasets;
+var _datasetsSync;
 var _datasetData = {};
+var _xrhObservers = {};
 var _xrhConnection = require("./xrhConnection");
 
 var datasetDataObserver = function(dataset) {
@@ -26,11 +30,16 @@ var datasetDataObserver = function(dataset) {
 
 var datasetObserver = {
   added: function(id) {
-    console.log("got dataset %s", id);
-    console.log("content is ", _xrhConnection.collection("Dataset")[id]);
+    log("got dataset %s", id);
+    log("content is ", _xrhConnection.collection("Dataset")[id]);
     _datasets[id] = _xrhConnection.collection("Dataset")[id];
-    _datasetData[_datasets[id].id] = _ddpServer.publish(_datasets[id].store);
-    _xrhConnection.observe(_datasets[id].store, datasetDataObserver(_datasets[id]));
+    if (!_datasetData[_datasets[id].id]) {
+      _datasetData[_datasets[id].id] = _ddpServer.publish(_datasets[id].store);
+    }
+    if (!_xrhObservers[_datasets[id].store]) {
+      _xrhObservers[_datasets[id].store] = _xrhConnection.observe(_datasets[id].store, datasetDataObserver(_datasets[id]));
+    }
+    startSync(_datasetData[_datasets[id].id]);
     _xrhConnection.subscribe("datasetData", {id: _datasets[id].id});
   },
   changed: function(id, oldFields, clearedFields, newFields) {
@@ -41,14 +50,23 @@ var datasetObserver = {
   }
 };
 
+var startSync = function(collection) {
+  for (var k in collection) {
+    delete collection[k];
+  }
+};
+
 var onLogin = function(accessToken) {
   _xrhAccessToken = accessToken;
   _xrhConnection.authenticate(_xrhAccessToken, function(err, result) {
     if (err) {
-      console.log("xrh connection auth error %s", err.message);
+      log("xrh connection auth error %s", err.message);
     } else {
-      console.log("xrh connection auth result ", result);
-      _xrhConnection.observe("Dataset", datasetObserver);
+      log("xrh connection auth result ", result);
+      if (!_xrhObservers["Dataset"]) {
+        _xrhObservers["Dataset"] = _xrhConnection.observe("Dataset", datasetObserver);
+      }
+      startSync(_datasets);
       _xrhConnection.subscribe("datasets", { id: "NJxAJbJ8ge"});
     }
   });
@@ -64,15 +82,15 @@ _datasets = _ddpServer.publish("datasets");
 _xrhConnection.start(_config, function(err, reconnect) {
   if (!err) {
     if (reconnect) {
-      console.log("xrh re-connected");
+      log("xrh re-connected");
     } else {
-      console.log("xrh connected");
+      log("xrh connected");
     }
     if (_xrhAccessToken) {
       onLogin(_xrhAccessToken);
     }
   } else {
-    console.log("xrh connection failed");
+    log("xrh connection failed");
   }
 });
 
@@ -86,10 +104,10 @@ _ddpServer.methods({
 //setTimeout(function() {
 //  var exec = require('child_process').exec;
 //  exec('node -v', {shell:"/system/bin/sh"}, function(error, stdout, stderr) {
-//    console.log('stdout: ' + stdout);
-//    console.log('stderr: ' + stderr);
+//    log('stdout: ' + stdout);
+//    log('stderr: ' + stderr);
 //    if (error !== null) {
-//      console.log('exec error: ' + error);
+//      log('exec error: ' + error);
 //    }
 //  });
 //},20000);

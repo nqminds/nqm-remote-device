@@ -19,7 +19,8 @@
   "dependencies": {
     "ddp": "git://github.com/nqminds/node-ddp-client",
     "ddp-server-reactive": "git://github.com/nqminds/DDP-Server-Reactive",
-    "minimongo": "git://github.com/nqminds/minimongo",
-    "debug": "^2.2.0"
+    "debug": "^2.2.0",
+    "lodash": "^3.10.1",
+    "minimongo": "git://github.com/nqminds/minimongo"
   }
 }
