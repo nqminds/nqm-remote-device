@@ -23,9 +23,12 @@ module.exports = (function() {
   var _authPath = "./auth";
   var _layout = fs.readFileSync("./layout.html").toString();
   
-  var basicRequest = function(options, data, onResult)
-  {
+  var basicRequest = function(options, data, onResult) {
     var protocol = options.port == 443 ? https : http;
+    
+    // Required to avoid EAI_BADFLAGS error on android.
+    options.family = 4;
+    
     var req = protocol.request(options, function(res) {
       var output = '';
       log(options.host + ':' + res.statusCode);
@@ -161,7 +164,7 @@ module.exports = (function() {
         var q = querystring.parse(up.query);
         if (q.code) {
           var options = {
-            host: 'www.googleapis.com',
+            hostname: 'www.googleapis.com',
             port: 443,
             path: "/oauth2/v3/token",
             method: 'POST',
