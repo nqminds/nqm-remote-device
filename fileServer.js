@@ -35,10 +35,20 @@ module.exports = (function() {
       if (_accessToken.length === 0) {
         sendLayoutFile(response, {}, "login.html", {});
       } else {
-        var menu = menuCompiler(_mainMenu);
-        var page = layoutCompiler(_layout, menu, "<p>hello world</p>");
-        sendLayout(response, {}, page);
+        sendLayout(response, _mainMenu, "<p>hello world</p>");
       }
+    }
+  };
+  
+  var route = function(routeName, response, data) {
+    if (_router[routeName]) {
+      _router[routeName](response, data);
+      return true;
+    } else {
+      return false;
+      //response.writeHead(500, { 'Content-Type': 'text/plain' });
+      //response.write("unknown route: " + routeName);
+      //response.end();
     }
   };
   
@@ -73,24 +83,6 @@ module.exports = (function() {
     req.end();
   };
 
-  var route = function(routeName, response, routeData) {
-    routeData = routeData || {};
-    var routeDef = _routes[routeName];
-    if (routeDef) {
-      if (routeDef.contentFile) {
-        sendLayout(response, routeDef.menu, routeDef.contentFile, routeData);
-      } else {
-        var menu = menuCompiler(routeDef.menu);
-        var page = layoutCompiler(_layout, menu, routeDef.content);
-        sendContent(response, page);
-      }
-    } else {
-      response.writeHead(500, { 'Content-Type': 'text/plain' });
-      response.write("unknown route: " + routeName);
-      response.end();
-    }
-  };
-  
   var sendLayoutFile = function(response, menuItems, contentFile, contentData) {
     var menu = menuCompiler(menuItems);
     fs.readFile(path.join(_templatePath,contentFile), function(err, contentTemplate) {
@@ -178,29 +170,12 @@ module.exports = (function() {
       log("requesting ", request.url);
 
       var filePath = request.url;
-      if (filePath === "/") {
-        filePath = _rootPath;
+      
+      if (route(request.url, response)) {
+        return;
       }
       
-      if (filePath === _rootPath) {
-        if (_accessToken.length === 0) {
-          //sendLayout(response, {}, "login.html", {});
-          route("auth", response);
-        } else {
-          route(filePath, response);
-          //var menuItems = {
-          //  items: [
-          //    {name: "Apps"},
-          //    {name: "Config"},
-          //    {name: "Databases"}
-          //  ]
-          //};
-          //var menu = menuCompiler(menuItems);
-          //var content = "<p>hello</p>";
-          //var page = layoutCompiler(_layout, menu, content);
-          //sendContent(response, page);
-        }
-      } else if (filePath === _authPath) {
+      if (filePath === _authPath) {
         var oauthURL = util.format("https://accounts.google.com/o/oauth2/auth?response_type=code&client_id=%s&redirect_uri=%s/oauthCB&scope=email%20profile", config.googleClientId, config.hostURL);
         response.writeHead(301, {Location: oauthURL});
         response.end();
