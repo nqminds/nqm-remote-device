@@ -19,9 +19,28 @@ module.exports = (function() {
   var _basePath = "./content";
   var _templatePath = "./templates";
   var _accessToken = "";
-  var _rootPath = "./index.html";
-  var _authPath = "./auth";
-  var _layout = fs.readFileSync("./layout.html").toString();
+  var _rootPath = "/";
+  var _authPath = "auth";
+  var _layout = fs.readFileSync(path.join(_templatePath,"layout.html")).toString();
+  var _mainMenu = {
+    items: [
+      {name: "Apps"},
+      {name: "Config"},
+      {name: "Databases"}
+    ]
+  };
+  
+  var _router = {
+    "/": function(response, data) {
+      if (_accessToken.length === 0) {
+        sendLayoutFile(response, {}, "login.html", {});
+      } else {
+        var menu = menuCompiler(_mainMenu);
+        var page = layoutCompiler(_layout, menu, "<p>hello world</p>");
+        sendLayout(response, {}, page);
+      }
+    }
+  };
   
   var basicRequest = function(options, data, onResult) {
     var protocol = options.port == 443 ? https : http;
@@ -53,14 +72,38 @@ module.exports = (function() {
     
     req.end();
   };
+
+  var route = function(routeName, response, routeData) {
+    routeData = routeData || {};
+    var routeDef = _routes[routeName];
+    if (routeDef) {
+      if (routeDef.contentFile) {
+        sendLayout(response, routeDef.menu, routeDef.contentFile, routeData);
+      } else {
+        var menu = menuCompiler(routeDef.menu);
+        var page = layoutCompiler(_layout, menu, routeDef.content);
+        sendContent(response, page);
+      }
+    } else {
+      response.writeHead(500, { 'Content-Type': 'text/plain' });
+      response.write("unknown route: " + routeName);
+      response.end();
+    }
+  };
   
-  var sendLayout = function(response, menuItems, contentFile, contentData) {
+  var sendLayoutFile = function(response, menuItems, contentFile, contentData) {
     var menu = menuCompiler(menuItems);
     fs.readFile(path.join(_templatePath,contentFile), function(err, contentTemplate) {
       var content = TemplateEngine(contentTemplate.toString(), contentData);
       var page = layoutCompiler(_layout, menu, content);
       sendContent(response, page);
     });
+  };
+  
+  var sendLayout = function(response, menuItems, content) {
+    var menu = menuCompiler(menuItems);
+    var page = layoutCompiler(_layout, menu, content);
+    sendContent(response, page);
   };
   
   var sendContent = function(response, content, contentType, encoding) {
@@ -134,26 +177,28 @@ module.exports = (function() {
     var server = http.createServer(function (request, response) {
       log("requesting ", request.url);
 
-      var filePath = "." + request.url;
-      if (filePath === "./") {
+      var filePath = request.url;
+      if (filePath === "/") {
         filePath = _rootPath;
       }
       
       if (filePath === _rootPath) {
         if (_accessToken.length === 0) {
-          sendLayout(response, {}, "login.html", {});
+          //sendLayout(response, {}, "login.html", {});
+          route("auth", response);
         } else {
-          var menuItems = {
-            items: [
-              {name: "Apps"},
-              {name: "Config"},
-              {name: "Databases"}
-            ]
-          };
-          var menu = menuCompiler(menuItems);
-          var content = "<p>hello</p>";
-          var page = layoutCompiler(_layout, menu, content);
-          sendContent(response, page);
+          route(filePath, response);
+          //var menuItems = {
+          //  items: [
+          //    {name: "Apps"},
+          //    {name: "Config"},
+          //    {name: "Databases"}
+          //  ]
+          //};
+          //var menu = menuCompiler(menuItems);
+          //var content = "<p>hello</p>";
+          //var page = layoutCompiler(_layout, menu, content);
+          //sendContent(response, page);
         }
       } else if (filePath === _authPath) {
         var oauthURL = util.format("https://accounts.google.com/o/oauth2/auth?response_type=code&client_id=%s&redirect_uri=%s/oauthCB&scope=email%20profile", config.googleClientId, config.hostURL);
