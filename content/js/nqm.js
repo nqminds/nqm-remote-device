@@ -23,12 +23,14 @@ _ddpObserve = function(collectionName, handler) {
 var fireObservers = function(evt, collectionName, doc) {
   if (_observers[collectionName]) {
     _observers[collectionName].forEach(function(i) {
-      i[evt](doc);
+      if (i[evt]) {
+        i[evt](doc);
+      }
     })
   }
 };
 
-var collectionHandler = function(socket) {
+var observeBindings = function(socket) {
   socket.on("added", function (data) {
     console.log("added");
     console.log(data);
@@ -64,12 +66,13 @@ webix.ready(function() {
   _ddp = new ddp(_ws);
   
   _ddp.connect(function() {
-      collectionHandler(_ddp);
-      _ddp.subscribe("datasets", function () {
-        _db["datasets"].findOne({}, {}, function (apps) {
-          _db.addCollection(apps.store);
-          _ddp.subscribe(apps.store);
-        });
-      });
+    observeBindings(_ddp);
+    _ddpObserve("datasets", {
+      added: function(doc) {
+        _ddp.subscribe(doc.store);
+      }
     });
+    
+    _ddp.subscribe("datasets", function () {});
+  });
 });

@@ -31,7 +31,7 @@ var datasetObserver = {
     _datasets[id] = _xrhConnection.collection("Dataset")[id];
     _datasetData[_datasets[id].id] = _ddpServer.publish(_datasets[id].store);
     _xrhConnection.observe(_datasets[id].store, datasetDataObserver(_datasets[id]));
-    _xrhConnection.subscribe(_xrhAccessToken, "datasetData", {id: _datasets[id].id});
+    _xrhConnection.subscribe("datasetData", {id: _datasets[id].id});
   },
   changed: function(id, oldFields, clearedFields, newFields) {
     _datasets[id] = _xrhConnection.collection("Dataset")[id];
@@ -42,13 +42,14 @@ var datasetObserver = {
 };
 
 var onLogin = function(accessToken) {
-  _xrhConnection.authenticate(accessToken, function(err, result) {
+  _xrhAccessToken = accessToken;
+  _xrhConnection.authenticate(_xrhAccessToken, function(err, result) {
     if (err) {
       console.log("xrh connection auth error %s", err.message);
     } else {
       console.log("xrh connection auth result ", result);
       _xrhConnection.observe("Dataset", datasetObserver);
-      _xrhConnection.subscribe(_xrhAccessToken, "datasets", { id: "NJxAJbJ8ge"});
+      _xrhConnection.subscribe("datasets", { id: "NJxAJbJ8ge"});
     }
   });
 };
@@ -66,6 +67,9 @@ _xrhConnection.start(_config, function(err, reconnect) {
       console.log("xrh re-connected");
     } else {
       console.log("xrh connected");
+    }
+    if (_xrhAccessToken) {
+      onLogin(_xrhAccessToken);
     }
   } else {
     console.log("xrh connection failed");

@@ -4,10 +4,12 @@
   
 module.exports = (function() {
   "use strict";
+  var log = require("debug")("xrhConnection");
   var _config;
   var _accessToken;
   var _ddpClient;
   var _connected = false;
+  var _authenticated = false;
   
   var ddpInitialise = function(config, onConnect) {
     var DDPClient = require("ddp");
@@ -28,7 +30,7 @@ module.exports = (function() {
 
     _ddpClient.connect(function(err, reconnect) {
       if (err) {
-        console.log("DDP connection error: " + err.toString());
+        log("DDP connection error: " + err.toString());
         _connected = false;
         onConnect(err);
       } else {
@@ -36,19 +38,19 @@ module.exports = (function() {
         _accessToken = "";
         onConnect(null,reconnect);
         if (reconnect) {
-          console.log("DDP re-connected");
+          log("DDP re-connected");
         }
-        console.log("DDP connected");
+        log("DDP connected");
       }
     });
   
     _ddpClient.on("socket-close", function() {
-      _connected = false;
+      _connected = _authenticated = false;
     });
   
     _ddpClient.on("socket-error", function(err) {
-      console.log("socket error: %s",err.message);
-      _connected = false;
+      log("socket error: %s",err.message);
+      _connected = _authenticated = false;
     });     
   };
   
@@ -58,10 +60,10 @@ module.exports = (function() {
    */
   var ddpAuthenticateCapability = function(cb) {
     if (!_connected) {
-      console.log("not connected");
+      log("not connected");
     }
     _ddpClient.call("/app/auth", [_config.capCredentials], function(err, result) {
-      console.log("callback");
+      log("callback");
       cb(err, result);
     });
   };
@@ -70,44 +72,47 @@ module.exports = (function() {
    * Authenticate using a google access token.
    */
   var ddpAuthenticate = function(token, cb) {
-    if (!_connected) {
-      console.log("not connected");
-    }
+    if (!_connected || _authenticated) {
+      log("not connected or already authenticated");
+      return;
+    } 
     _ddpClient.call("/app/oauth", ["google",token], function(err, result) {
-      console.log("callback");
+      log("ddpAuthenticate callback");
+      if (!err) {
+        _authenticated = true;
+      }
       cb(err, result);
     });
   };
   
-  var ddpSubscribe = function(accessToken, publication, params, cb) {
-    if (!_connected) {
-      console.log("ddpSubscribe - not connected");
-      process.nextTick(function() { cb(new Error("not connected")); });
+  var ddpSubscribe = function(publication, params, cb) {
+    if (!_connected || !_authenticated) {
+      log("ddpSubscribe - not connected or authenticated");
+      process.nextTick(function() { cb(new Error("not connected or authenticated")); });
     }
-    params.accessToken = accessToken;
     _ddpClient.subscribe(publication, [params], cb);
   };
   
   var ddpObserve = function(collection, handlers) {
     var observer = _ddpClient.observe(collection);
     observer.added = function(id) {
-      console.log("[ADDED] to " + observer.name + ":  " + id);
+      log("[ADDED] to " + observer.name + ":  " + id);
       if (handlers.added) {
         handlers.added(id);
       }
     };
     observer.changed = function(id, oldFields, clearedFields, newFields) {
-      console.log("[CHANGED] in " + observer.name + ":  " + id);
-      console.log("[CHANGED] old field values: ", oldFields);
-      console.log("[CHANGED] cleared fields: ", clearedFields);
-      console.log("[CHANGED] new fields: ", newFields);
+      log("[CHANGED] in " + observer.name + ":  " + id);
+      log("[CHANGED] old field values: ", oldFields);
+      log("[CHANGED] cleared fields: ", clearedFields);
+      log("[CHANGED] new fields: ", newFields);
       if (handlers.changed) {
         handlers.changed(id, oldFields, clearedFields, newFields);
       }
     };
     observer.removed = function(id, oldValue) {
-      console.log("[REMOVED] in " + observer.name + ":  " + id);
-      console.log("[REMOVED] previous value: ", oldValue);
+      log("[REMOVED] in " + observer.name + ":  " + id);
+      log("[REMOVED] previous value: ", oldValue);
       if (handlers.removed) {
         handlers.removed(id, oldValue);
       }
