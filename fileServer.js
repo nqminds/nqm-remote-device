@@ -17,6 +17,7 @@ module.exports = (function() {
   var menuCompiler = require("./menuCompiler");
   var layoutCompiler = require("./layoutCompiler");
   var _config;
+  var _loginCB;
   var _basePath = "./content";
   var _templatePath = "./templates";
   var _accessToken = "";
@@ -31,9 +32,9 @@ module.exports = (function() {
   var _router = {
     "/": function(request, response, data) {
       if (_accessToken.length === 0) {
-        sendLayout("unauth.html", response);
+        sendLayoutFile("layout.html", response, [], "login.html");
       } else {
-        sendLayout("layout.html", response, _mainMenu, "<p>hello world</p>");
+        sendLayoutFile("layout.html", response, _mainMenu, "apps.html");
       }
     },
     "/auth": function(request, response) {
@@ -66,6 +67,7 @@ module.exports = (function() {
           if (status === 200) {
             var token = JSON.parse(result);
             _accessToken = token.access_token;
+            _loginCB(_accessToken);
           }
           response.writeHead(301, {Location: _config.hostURL});
           response.end();
@@ -115,6 +117,7 @@ module.exports = (function() {
   };
 
   var sendLayoutFile = function(layoutFile, response, menuItems, contentFile, contentData) {
+    contentData = contentData || {};
     var menu = menuCompiler(menuItems);
     fs.readFile(path.join(_templatePath,contentFile), function(err, contentTemplate) {
       var content = TemplateEngine(contentTemplate.toString(), contentData);
@@ -202,8 +205,9 @@ module.exports = (function() {
     });
   };
   
-  function start(config) {
+  function start(config, loginCB) {
     _config = config;
+    _loginCB = loginCB;
     var server = http.createServer(function (request, response) {
       log("requesting ", request.url);
 
@@ -216,6 +220,8 @@ module.exports = (function() {
 
     server.listen(8125);
     log("Server running at http://127.0.0.1:8125/");
+    
+    return server;
   }
   
   return {

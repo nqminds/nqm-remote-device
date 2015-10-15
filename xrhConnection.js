@@ -52,11 +52,28 @@ module.exports = (function() {
     });     
   };
   
-  var ddpAuthenticate = function(cb) {
+  /*
+   * Authenticate using a capability token.
+   * Needs work.
+   */
+  var ddpAuthenticateCapability = function(cb) {
     if (!_connected) {
       console.log("not connected");
     }
     _ddpClient.call("/app/auth", [_config.capCredentials], function(err, result) {
+      console.log("callback");
+      cb(err, result);
+    });
+  };
+  
+  /*
+   * Authenticate using a google access token.
+   */
+  var ddpAuthenticate = function(token, cb) {
+    if (!_connected) {
+      console.log("not connected");
+    }
+    _ddpClient.call("/app/oauth", ["google",token], function(err, result) {
       console.log("callback");
       cb(err, result);
     });
@@ -71,12 +88,12 @@ module.exports = (function() {
     _ddpClient.subscribe(publication, [params], cb);
   };
   
-  var ddpObserve = function(collection, added, changed, removed) {
+  var ddpObserve = function(collection, handlers) {
     var observer = _ddpClient.observe(collection);
-    observer.added = function(id, doc) {
+    observer.added = function(id) {
       console.log("[ADDED] to " + observer.name + ":  " + id);
-      if (added) {
-        added(id);
+      if (handlers.added) {
+        handlers.added(id);
       }
     };
     observer.changed = function(id, oldFields, clearedFields, newFields) {
@@ -84,15 +101,15 @@ module.exports = (function() {
       console.log("[CHANGED] old field values: ", oldFields);
       console.log("[CHANGED] cleared fields: ", clearedFields);
       console.log("[CHANGED] new fields: ", newFields);
-      if (changed) {
-        changed(id, oldFields, clearedFields, newFields);
+      if (handlers.changed) {
+        handlers.changed(id, oldFields, clearedFields, newFields);
       }
     };
     observer.removed = function(id, oldValue) {
       console.log("[REMOVED] in " + observer.name + ":  " + id);
       console.log("[REMOVED] previous value: ", oldValue);
-      if (removed) {
-        removed(id, oldValue);
+      if (handlers.removed) {
+        handlers.removed(id, oldValue);
       }
     };
   };
