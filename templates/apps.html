@@ -2,10 +2,9 @@
 <script src="js/nqm-bundle.js"></script>
 <script src="js/webix-proxy.js"></script>
 <script type="text/javascript">
-    
     var contentUI = {
         type: "space",
-                cols: [
+        cols: [
         {
             header: "notifications",
             collapsed: true,
@@ -28,7 +27,7 @@
                     header: "running",
                     body: { 
                         view: "list",
-                        template: "#appId#",
+                        template: "#name#",
                         url: webix.proxy("ddp","dataset.NyCJ-1Uxe")
                     }
                 },
@@ -47,7 +46,7 @@
             rows: [
                 {
                     id: "activeTokenDataContainer",
-                    header: "capability",
+                    header: "details",
                     body: {
                         id: "activeTokenData",
                         view: "property",

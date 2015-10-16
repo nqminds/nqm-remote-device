@@ -9,7 +9,6 @@ var _fileServer;
 var _ddpServer;
 var _xrhAccessToken;
 var _datasets;
-var _datasetsSync;
 var _datasetData = {};
 var _xrhObservers = {};
 var _xrhConnection = require("./xrhConnection");
