@@ -67,7 +67,7 @@ var onLogin = function(accessToken) {
     if (err) {
       log("xrh connection auth error %s", err.message);
       _xrhAccessToken = "";
-      _fileServer.clearAccessToken();
+      FileServer.clearAccessToken();
     } else {
       log("xrh connection auth result ", result);
       if (!_xrhObservers["Dataset"]) {
