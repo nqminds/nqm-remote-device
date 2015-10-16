@@ -77,7 +77,8 @@ var contentUI = {
           {
             id:        "appsTabBar",
             view:      "tabview",
-            minHeight: 250,
+            minHeight: 150,
+            maxHeight: 300,
             tabbar:    {optionWidth: 100},
             multiview: {animate: true},
             gravity:   1,
