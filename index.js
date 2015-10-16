@@ -20,7 +20,13 @@ var datasetDataObserver = function(dataset) {
       _datasetData[dataset.id][dataId] = _xrhConnection.collection(dataset.store)[dataId];
     },
     changed: function(dataId, oldFields, clearedFields, newFields) {
-      _datasetData[dataset.id][dataId] = _xrhConnection.collection(dataset.store)[dataId];
+      var current = _xrhConnection.collection(dataset.store)[dataId];
+      for (var clear in clearedFields) {
+        delete _datasetData[dataset.id][dataId][clear];  
+      }
+      for (var add in newFields) {
+        _datasetData[dataset.id][dataId][add] = current[add];
+      }
     },
     removed: function(dataId, oldValue) {
       delete _datasetData[dataset.id][dataId];
