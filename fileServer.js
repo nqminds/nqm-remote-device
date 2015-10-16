@@ -224,7 +224,12 @@ module.exports = (function() {
     return server;
   }
   
+  function clearAccessToken() {
+    _accessToken = "";
+  }
+  
   return {
-    start: start
+    start: start,
+    clearAccessToken: clearAccessToken
   }
 }());  
