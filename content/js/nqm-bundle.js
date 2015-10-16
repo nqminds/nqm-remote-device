@@ -22014,7 +22014,6 @@ return jQuery;
  */
 
 var _ws;
-var _ddp;
 var _minimongo = require("minimongo");
 
 _db = new _minimongo.MemoryDb();
@@ -22075,17 +22074,17 @@ var observeBindings = function(socket) {
 
 webix.ready(function() {
   _ws = new WebSocket("ws://" + window.location.host);
-  _ddp = new ddp(_ws);
+  var ddpClient = window._ddp = new ddp(_ws);
   
-  _ddp.connect(function() {
-    observeBindings(_ddp);
+  ddpClient.connect(function() {
+    observeBindings(ddpClient);
     _ddpObserve("datasets", {
       added: function(doc) {
-        _ddp.subscribe(doc.store);
+        ddpClient.subscribe(doc.store);
       }
     });
-    
-    _ddp.subscribe("datasets", function () {});
+  
+    ddpClient.subscribe("datasets", function () {});
   });
 });
 },{"minimongo":1}],18:[function(require,module,exports){

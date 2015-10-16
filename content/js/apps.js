@@ -15,21 +15,21 @@ function showAppDetails(bind, propertySheet) {
   propertySheet.define("elements",elements);
   propertySheet.parse(bind);
   
-  $$("installButton").hide();
-  $$("runButton").hide();
-  $$("uninstallButton").hide();
-  $$("stopButton").hide();
+  $$("install").hide();
+  $$("run").hide();
+  $$("uninstall").hide();
+  $$("stop").hide();
   
   switch (bind.status) {
     case "pendingInstall":
-      $$("installButton").show();
+      $$("install").show();
       break;
     case "stopped":
-      $$("runButton").show();
-      $$("uninstallButton").show();
+      $$("run").show();
+      $$("uninstall").show();
       break;
     case "running":
-      $$("stopButton").show();
+      $$("stop").show();
       break;
     default: 
       break;
@@ -39,6 +39,20 @@ function showAppDetails(bind, propertySheet) {
 function onDataNotify(evt) {
   if (activeItem && evt && evt.data.id === activeItem.id) {
     appListClick(activeItem,$$("appDetailsData"));
+  }
+}
+
+function onSetStatus(status) {
+  if (!activeItem) {
+    console.log("onSetStatus - no active item");
+  } else {
+    _ddp.call("setAppStatus",status,activeItem,function(err, result) {
+      if (err) {
+        console.log("error: " + err.message);
+      } else {
+        console.log("result: " + result);
+      }
+    });
   }
 }
 
@@ -115,22 +129,24 @@ var contentUI = {
                       elements: []
                     },
                     {
-                      id:     "installButton",
+                      id:     "install",
                       view:   "button",
                       type:   "iconButton",
                       icon:   "download",
                       label:  "install",
-                      hidden: true
+                      hidden: true,
+                      click: onSetStatus
                     },
-                    {id: "runButton", view: "button", type: "iconButton", icon: "play", label: "run", hidden: true},
-                    {id: "stopButton", view: "button", type: "iconButton", icon: "stop", label: "stop", hidden: true},
+                    {id: "run", view: "button", type: "iconButton", icon: "play", label: "run", hidden: true, click: onSetStatus },
+                    {id: "stop", view: "button", type: "iconButton", icon: "stop", label: "stop", hidden: true, click: onSetStatus },
                     {
-                      id:     "uninstallButton",
+                      id:     "uninstall",
                       view:   "button",
                       type:   "iconButton",
                       icon:   "trash-o",
                       label:  "uninstall",
-                      hidden: true
+                      hidden: true,
+                      click: onSetStatus
                     },
                   ]
                 }

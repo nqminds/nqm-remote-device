@@ -120,6 +120,10 @@ module.exports = (function() {
     return observer;
   };
   
+  var call = function(cmd, params, cb) {
+    return _ddpClient.call(cmd, params, cb);
+  };
+  
   var getCollection = function(name) {
     return _ddpClient.collections[name];
   };
@@ -129,7 +133,8 @@ module.exports = (function() {
     authenticate: ddpAuthenticate,
     subscribe: ddpSubscribe,
     observe: ddpObserve,
-    collection: getCollection
+    collection: getCollection,
+    call: call
   }
 }());
 

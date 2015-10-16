@@ -12,6 +12,7 @@ var _datasets;
 var _datasetData = {};
 var _xrhObservers = {};
 var _xrhConnection = require("./xrhConnection");
+var _appDatasetId = "NJxAJbJ8ge"; // TODO - discover this?
 
 var datasetDataObserver = function(dataset) {
   return {
@@ -74,7 +75,7 @@ var onLogin = function(accessToken) {
         _xrhObservers["Dataset"] = _xrhConnection.observe("Dataset", datasetObserver);
       }
       startSync(_datasets);
-      _xrhConnection.subscribe("datasets", { id: "NJxAJbJ8ge"});
+      _xrhConnection.subscribe("datasets", { id: _appDatasetId});
     }
   });
 };
@@ -103,7 +104,44 @@ _xrhConnection.start(_config, function(err, reconnect) {
 
 // Add methods
 _ddpServer.methods({
-  test: function() {
+  setAppStatus: function(status, app) {
+    log("*********** called test method ************");
+    log(status);
+    
+    switch (status) {
+      case "run":
+        app.status = "running";
+        break;
+      case "install":
+        app.status = "stopped";
+        break;
+      case "stop":
+        app.status = "stopped";
+        break;
+      case "uninstall":
+        app.status = "uninstalled";
+        break;
+      default:
+        log("unknown status: %s",status);
+        break;
+    }
+    
+    // Save command to local file cache.
+    var command = {
+      cmd: "/app/dataset/data/update",
+      params: app,
+      timestamp: Date.now(),
+    };
+    
+    _xrhConnection.call(command.cmd, [_appDatasetId, command.params], function(err, result) {
+      if (err) {
+        log("command failed: %s: %j", command.cmd, err);
+      } else {
+        log("command OK: %s: %j", command.cmd, result);
+        _datasetData[_appDatasetId][app.id].status = app.status;
+      }
+    });
+    
     return true;
   }
 });
