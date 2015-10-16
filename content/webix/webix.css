@@ -31,7 +31,7 @@ button,
 	known types are: line, clean, wide, space;
 */
 .webix_layout_space {
-  background-color: #eeeeee;
+  background-color: #ffffff;
 }
 .webix_layout_wide {
   background-color: transparent;
@@ -116,7 +116,7 @@ body.webix_full_screen {
 }
 .webix_layout_space > .webix_section > .webix_template {
   padding: 0px 8px;
-  background-color: #eeeeee;
+  background-color: #ffffff;
 }
 .webix_layout_wide > .webix_section > .webix_template {
   padding: 0px 8px;
@@ -2598,7 +2598,7 @@ label.webix_required:after {
 }
 .webix_menu,
 .webix_menu-x {
-  background: #eeeeee;
+  background: #ffffff;
 }
 .webix_menu .webix_list_item:hover,
 .webix_menu-x .webix_list_item:hover,
@@ -4966,7 +4966,7 @@ label.webix_required:after {
 }
 .webix_layout_space,
 .webix_layout_material {
-  background-color: #eeeeee;
+  background-color: #ffffff;
 }
 .webix_layout_space > .webix_view {
   border-radius: 2px;

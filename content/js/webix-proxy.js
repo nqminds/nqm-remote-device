@@ -28,6 +28,7 @@ webix.proxy.ddp = {
         //do not trigger data saving events
         webix.dp(view).ignore(function(){
           view.add(post);
+          secdEventBus.emit("data-added", { source: this.source, data: post });
         });
       },
       //data in ddp collection changed
@@ -35,12 +36,13 @@ webix.proxy.ddp = {
         //event triggered by data saving in the same component
         if (view.ddp_saving) return;
         
-        var id = post._id + "";
+        post.id = post._id + "";
         delete post._id;
         
         //do not trigger data saving events
         webix.dp(view).ignore(function(){
-          view.updateItem(id, post);
+          view.updateItem(post.id, post);
+          secdEventBus.emit("data-changed", { source: this.source, data: post });
         });
       },
       //data in ddp collection removed
@@ -51,6 +53,7 @@ webix.proxy.ddp = {
         //do not trigger data saving events
         webix.dp(view).ignore(function(){
           view.remove(id + "");
+          secdEventBus.emit("data-removed", { source: this.source, data: id });
         });
       }
     });

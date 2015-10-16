@@ -7,9 +7,15 @@
     var contentUI = {
         type: "space",
         rows: [
-            { autoheight: true},
-            { id: "loginButton", view: "button", type: "iconButton", icon: "login", label: "login with google", inputWidth: 200 , click: onLoginClick },
-            { autoheight: true},
+            { },
+            { 
+                cols: [
+                    {},
+                    { id: "loginButton", view: "button", type: "iconButton", icon: "sign-in", label: "login with google", inputWidth: 200 , click: onLoginClick },
+                    {}
+                ]
+            },
+            { },
         ]
     };
 </script>

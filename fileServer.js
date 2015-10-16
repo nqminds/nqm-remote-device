@@ -73,6 +73,10 @@ module.exports = (function() {
           response.end();
         });
       }
+    },
+    "/logout": function(request, response) {
+      _accessToken = "";
+      sendLayoutFile("layout.html", response, [], "login.html");
     }
   };
   
