@@ -3,8 +3,8 @@
  */
 
 webix.debug = true;
-webix.ui.fullScreen();
 webix.ready(function() {
+  webix.ui.fullScreen();
   webix.ui({
     id: "mainLayout",
     rows:[
