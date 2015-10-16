@@ -70,52 +70,74 @@ var contentUI = {
       }
     },
     {
-      id: "appsTabBar",
-      view:"tabview",
-      tabbar: { optionWidth: 100},
-      multiview: { animate: true },
-      gravity: 3,
-      cells: [
-        {
-          header: "running",
-          body: {
-            id: "runningList",
-            view: "list",
-            template: "#name#",
-            url: webix.proxy("ddp","dataset.NyCJ-1Uxe")
-          }
-        },
-        {
-          header: "installed",
-          body:  { template: "installed"}
-        }
-      ]
-    },
-    {
-      view: "resizer"
-    },
-    {
-      id: "detailsContainer",
-      gravity: 1,
-      rows: [
-        {
-          id: "appDetailsContainer",
-          header: "details",
-          body: {
-            rows: [
+      view: "scrollview",
+      scroll: "y",
+      body: {
+        rows: [
+          {
+            id:        "appsTabBar",
+            view:      "tabview",
+            minHeight: 250,
+            tabbar:    {optionWidth: 100},
+            multiview: {animate: true},
+            gravity:   1,
+            cells:     [
               {
-                id: "appDetailsData",
-                view: "property",
-                elements: []
+                header: "running",
+                body:   {
+                  id:       "runningList",
+                  view:     "list",
+                  template: "#name#",
+                  css: "secd-apps-list",
+                  url:      webix.proxy("ddp", "dataset.NyCJ-1Uxe")
+                }
               },
-              { id: "installButton", view: "button", type: "iconButton", icon: "download", label: "install", hidden: true },
-              { id: "runButton", view: "button", type: "iconButton", icon: "play", label: "run", hidden: true },
-              { id: "stopButton", view: "button", type: "iconButton", icon: "stop", label: "stop", hidden: true },
-              { id: "uninstallButton", view: "button", type: "iconButton", icon: "trash-o", label: "uninstall", hidden: true },
+              {
+                header: "installed",
+                body:   {template: "installed"}
+              }
+            ]
+          },
+          {
+            id:      "detailsContainer",
+            gravity: 1,
+            rows:    [
+              {
+                id:     "appDetailsContainer",
+                header: "details",
+                height: 250,
+                body:   {
+                  rows: [
+                    {
+                      id:       "appDetailsData",
+                      view:     "property",
+                      elements: []
+                    },
+                    {
+                      id:     "installButton",
+                      view:   "button",
+                      type:   "iconButton",
+                      icon:   "download",
+                      label:  "install",
+                      hidden: true
+                    },
+                    {id: "runButton", view: "button", type: "iconButton", icon: "play", label: "run", hidden: true},
+                    {id: "stopButton", view: "button", type: "iconButton", icon: "stop", label: "stop", hidden: true},
+                    {
+                      id:     "uninstallButton",
+                      view:   "button",
+                      type:   "iconButton",
+                      icon:   "trash-o",
+                      label:  "uninstall",
+                      hidden: true
+                    },
+                  ]
+                }
+              }
             ]
           }
-        }
-      ]
+        ]
+      }
     }
   ]};
 
