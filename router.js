@@ -1,11 +1,11 @@
 /**
- * Created by toby on 13/10/15.
+ * Created by toby on 17/10/15.
  */
-  
+
 module.exports = (function() {
   "use strict";
-
-  var log = require("debug")("fileServer");
+  
+  var log = require("debug")("router");
   var http = require("http");
   var https = require("https");
   var fs = require("fs");
@@ -16,10 +16,10 @@ module.exports = (function() {
   var TemplateEngine = require("./templateEngine");
   var menuCompiler = require("./menuCompiler");
   var layoutCompiler = require("./layoutCompiler");
-  var _config;
-  var _loginCB;
+  var _config = require("./config.json");
   var _basePath = "./content";
   var _templatePath = "./templates";
+  var _loginCallback = null;
   var _accessToken = "";
   var _mainMenu = {
     items: [
@@ -29,7 +29,7 @@ module.exports = (function() {
     ]
   };
   
-  var _router = {
+  var _routes = {
     "/": function(request, response, data) {
       if (_accessToken.length === 0) {
         sendLayoutFile("layout.html", response, [], "login.html");
@@ -67,7 +67,7 @@ module.exports = (function() {
           if (status === 200) {
             var token = JSON.parse(result);
             _accessToken = token.access_token;
-            _loginCB(_accessToken);
+            _loginCallback(_accessToken);
           }
           response.writeHead(301, {Location: _config.hostURL});
           response.end();
@@ -75,14 +75,15 @@ module.exports = (function() {
       }
     },
     "/logout": function(request, response) {
+      _loginCallback("");
       _accessToken = "";
       sendLayoutFile("layout.html", response, [], "login.html");
     }
   };
   
-  var route = function(routeName, request, response) {
-    if (_router[routeName]) {
-      _router[routeName](request, response);
+  var router = function(routeName, request, response) {
+    if (_routes[routeName]) {
+      _routes[routeName](request, response);
       return true;
     } else {
       return false;
@@ -119,7 +120,7 @@ module.exports = (function() {
     
     req.end();
   };
-
+  
   var sendLayoutFile = function(layoutFile, response, menuItems, contentFile, contentData) {
     contentData = contentData || {};
     var menu = menuCompiler(menuItems);
@@ -209,31 +210,21 @@ module.exports = (function() {
     });
   };
   
-  function start(config, loginCB) {
-    _config = config;
-    _loginCB = loginCB;
-    var server = http.createServer(function (request, response) {
-      log("requesting ", request.url);
-
-      var filePath = url.parse(request.url).pathname;
-      
-      if (!route(filePath, request, response)) {
-        sendFile(response, filePath);
-      }
-    });
-
-    server.listen(8125);
-    log("Server running at http://127.0.0.1:8125/");
-    
-    return server;
-  }
+  var setLoginCallback = function(cb) {
+    _loginCallback = cb;
+  };
   
-  function clearAccessToken() {
-    _accessToken = "";
-  }
+  var handleHTTPRequest = function(request, response) {
+    log("requesting ", request.url);
+    var filePath = url.parse(request.url).pathname;
+    if (!router(filePath, request, response)) {
+      sendFile(response, filePath);
+    }
+  };
   
   return {
-    start: start,
-    clearAccessToken: clearAccessToken
+    routeRequest: handleHTTPRequest,
+    setLoginCallback: setLoginCallback
   }
-}());  
+}());
+

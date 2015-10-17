@@ -21,6 +21,7 @@
     "ddp-server-reactive": "git://github.com/nqminds/DDP-Server-Reactive",
     "debug": "^2.2.0",
     "lodash": "^3.10.1",
-    "minimongo": "git://github.com/nqminds/minimongo"
+    "minimongo": "git://github.com/nqminds/minimongo",
+    "unzip": "^0.1.11"
   }
 }
