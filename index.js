@@ -5,31 +5,32 @@
 var log = require("debug")("index");
 var _ = require("lodash");
 var _config = require("./config.json");
-var _fileServer;
-var _ddpServer;
-var _xrhAccessToken;
-var _datasets;
-var _datasetData = {};
-var _xrhObservers = {};
+var FileServer = require("./fileServer");
 var _xrhConnection = require("./xrhConnection");
-var _appDatasetId = "NJxAJbJ8ge"; // TODO - discover this?
+var _ddpServer = require("./ddpServer");
+var _fileServer;
+var _xrhAccessToken;
+var _xrhObservers = {};
 
 var datasetDataObserver = function(dataset) {
   return {
     added: function (dataId) {
-      _datasetData[dataset.id][dataId] = _xrhConnection.collection(dataset.store)[dataId];
+      var dataCollection = _ddpServer.getCollection("data-" + dataset.id);
+      dataCollection[dataId] = _xrhConnection.collection(dataset.store)[dataId];
     },
     changed: function(dataId, oldFields, clearedFields, newFields) {
+      var dataCollection = _ddpServer.getCollection("data-" + dataset.id);
       var current = _xrhConnection.collection(dataset.store)[dataId];
       for (var clear in clearedFields) {
-        delete _datasetData[dataset.id][dataId][clear];  
+        delete dataCollection[dataId][clear];  
       }
       for (var add in newFields) {
-        _datasetData[dataset.id][dataId][add] = current[add];
+        dataCollection[dataId][add] = current[add];
       }
     },
     removed: function(dataId, oldValue) {
-      delete _datasetData[dataset.id][dataId];
+      var dataCollection = _ddpServer.getCollection("data-" + dataset.id);
+      delete dataCollection[dataId];
     }
   };
 };
@@ -37,22 +38,26 @@ var datasetDataObserver = function(dataset) {
 var datasetObserver = {
   added: function(id) {
     log("got dataset %s", id);
-    log("content is ", _xrhConnection.collection("Dataset")[id]);
-    _datasets[id] = _xrhConnection.collection("Dataset")[id];
-    if (!_datasetData[_datasets[id].id]) {
-      _datasetData[_datasets[id].id] = _ddpServer.publish(_datasets[id].store);
+    var dataset = _xrhConnection.collection("Dataset")[id];
+    log("content is ", dataset);
+    // Store dataset in local cache.
+    var collection = _ddpServer.getCollection("Dataset");
+    collection[id] = dataset;
+    var dataCollection = _ddpServer.getCollection("data-" + dataset.id);
+    if (!_xrhObservers[dataset.store]) {
+      _xrhObservers[dataset.store] = _xrhConnection.observe(dataset.store, datasetDataObserver(dataset));
     }
-    if (!_xrhObservers[_datasets[id].store]) {
-      _xrhObservers[_datasets[id].store] = _xrhConnection.observe(_datasets[id].store, datasetDataObserver(_datasets[id]));
-    }
-    startSync(_datasetData[_datasets[id].id]);
-    _xrhConnection.subscribe("datasetData", {id: _datasets[id].id});
+    startSync(dataCollection);
+    _xrhConnection.subscribe("datasetData", {id: dataset.id});
   },
   changed: function(id, oldFields, clearedFields, newFields) {
-    _datasets[id] = _xrhConnection.collection("Dataset")[id];
+    var dataset = _xrhConnection.collection("Dataset")[id];
+    var collection = _ddpServer.getCollection("Dataset");
+    collection[id] = dataset;
   },
   removed: function(id, oldValue) {
-    delete _datasets[id];
+    var collection = _ddpServer.getCollection("Dataset");
+    delete collection[id];
   }
 };
 
@@ -62,7 +67,7 @@ var startSync = function(collection) {
   }
 };
 
-var onLogin = function(accessToken) {
+var _onXRHLogin = function(accessToken) {
   _xrhAccessToken = accessToken;
   _xrhConnection.authenticate(_xrhAccessToken, function(err, result) {
     if (err) {
@@ -74,77 +79,26 @@ var onLogin = function(accessToken) {
       if (!_xrhObservers["Dataset"]) {
         _xrhObservers["Dataset"] = _xrhConnection.observe("Dataset", datasetObserver);
       }
-      startSync(_datasets);
-      _xrhConnection.subscribe("datasets", { id: _appDatasetId});
+      var datasetCollection = _ddpServer.getCollection("Dataset");
+      startSync(datasetCollection);
+      _xrhConnection.subscribe("datasets", { id: _config.appDatasetId});
     }
   });
 };
 
-var FileServer = require("./fileServer");
-_fileServer = FileServer.start(_config, onLogin);
-
-var DDPServer = require("ddp-server-reactive");
-_ddpServer = new DDPServer({ httpServer: _fileServer });
-_datasets = _ddpServer.publish("datasets");
-
+_fileServer = FileServer.start(_config, _onXRHLogin);
+_ddpServer.start(_config, _fileServer, _xrhConnection);
 _xrhConnection.start(_config, function(err, reconnect) {
   if (!err) {
-    if (reconnect) {
-      log("xrh re-connected");
-    } else {
-      log("xrh connected");
-    }
+    log("xrh %s", (reconnect ? "re-connected" : "connected"));
     if (_xrhAccessToken) {
-      onLogin(_xrhAccessToken);
+      _onXRHLogin(_xrhAccessToken);
     }
   } else {
-    log("xrh connection failed");
+    log("xrh connection failed: %s",err.message);
   }
 });
 
-// Add methods
-_ddpServer.methods({
-  setAppStatus: function(status, app) {
-    log("*********** called test method ************");
-    log(status);
-    
-    switch (status) {
-      case "run":
-        app.status = "running";
-        break;
-      case "install":
-        app.status = "stopped";
-        break;
-      case "stop":
-        app.status = "stopped";
-        break;
-      case "uninstall":
-        app.status = "uninstalled";
-        break;
-      default:
-        log("unknown status: %s",status);
-        break;
-    }
-    
-    // Save command to local file cache.
-    var command = {
-      cmd: "/app/dataset/data/update",
-      params: app,
-      timestamp: Date.now(),
-    };
-    
-    _xrhConnection.call(command.cmd, [_appDatasetId, command.params], function(err, result) {
-      if (err) {
-        log("command failed: %s: %j", command.cmd, err);
-      } else {
-        log("command OK: %s: %j", command.cmd, result);
-        _datasetData[_appDatasetId][app.id].status = app.status;
-      }
-    });
-    
-    return true;
-  }
-});
 
 //setTimeout(function() {
 //  var exec = require('child_process').exec;

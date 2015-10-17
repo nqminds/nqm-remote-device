@@ -104,7 +104,7 @@ var contentUI = {
                   view:     "list",
                   template: "#name#",
                   css: "secd-apps-list",
-                  url:      webix.proxy("ddp", "dataset.NyCJ-1Uxe")
+                  url:      webix.proxy("ddp", "data-NJxAJbJ8ge")
                 }
               },
               {

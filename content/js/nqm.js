@@ -29,8 +29,8 @@ var fireObservers = function(evt, collectionName, doc) {
   }
 };
 
-var observeBindings = function(socket) {
-  socket.on("added", function (data) {
+var observeBindings = function(ddpConnection) {
+  ddpConnection.on("added", function (data) {
     console.log("added");
     console.log(data);
     if (!_db[data.collection]) {
@@ -41,7 +41,7 @@ var observeBindings = function(socket) {
     fireObservers("added", data.collection, data.fields);
   });
   
-  socket.on("changed", function (data) {
+  ddpConnection.on("changed", function (data) {
     if (_db[data.collection]) {
       data.fields._id = data.id;
       _db[data.collection].upsert(data.fields);
@@ -51,7 +51,7 @@ var observeBindings = function(socket) {
     }
   });
   
-  socket.on("removed", function (data) {
+  ddpConnection.on("removed", function (data) {
     if (_db[data.collection]) {
       _db[data.collection].remove({id: data.id});
       fireObservers("removed", data.collection, data.id);
@@ -67,12 +67,16 @@ webix.ready(function() {
   
   ddpClient.connect(function() {
     observeBindings(ddpClient);
-    _ddpObserve("datasets", {
+    _ddpObserve("Dataset", {
       added: function(doc) {
-        ddpClient.subscribe(doc.store);
+        ddpClient.subscribe("data-" + doc.id);
       }
     });
   
-    ddpClient.subscribe("datasets", function () {});
+    ddpClient.subscribe("Dataset", function () {});
+  });
+  
+  ddpClient.on("close", function() {
+    alert("lost server connection");
   });
 });

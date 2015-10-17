@@ -5,6 +5,7 @@
 module.exports = (function() {
   "use strict";
   var log = require("debug")("xrhConnection");
+  var DDPClient = require("ddp");
   var _config;
   var _accessToken;
   var _ddpClient;
@@ -12,7 +13,6 @@ module.exports = (function() {
   var _authenticated = false;
   
   var ddpInitialise = function(config, onConnect) {
-    var DDPClient = require("ddp");
     if (_ddpClient) return;
     
     _config = config;
