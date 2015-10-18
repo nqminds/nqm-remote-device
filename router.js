@@ -6,8 +6,6 @@ module.exports = (function() {
   "use strict";
   
   var log = require("debug")("router");
-  var http = require("http");
-  var https = require("https");
   var fs = require("fs");
   var path = require("path");
   var util = require("util");
@@ -16,6 +14,7 @@ module.exports = (function() {
   var TemplateEngine = require("./templateEngine");
   var menuCompiler = require("./menuCompiler");
   var layoutCompiler = require("./layoutCompiler");
+  var common = require("./common");
   var _config = require("./config.json");
   var _basePath = "./content";
   var _templatePath = "./templates";
@@ -62,7 +61,7 @@ module.exports = (function() {
           'redirect_uri':  _config.hostURL + "/oauthCB",
           'grant_type':    'authorization_code'
         };
-        basicRequest(options, querystring.stringify(postData), function (status, result) {
+        common.httpRequest(options, querystring.stringify(postData), function (status, result) {
           log("status: %d, result: ", result);
           if (status === 200) {
             var token = JSON.parse(result);
@@ -88,37 +87,6 @@ module.exports = (function() {
     } else {
       return false;
     }
-  };
-  
-  var basicRequest = function(options, data, onResult) {
-    var protocol = options.port == 443 ? https : http;
-    
-    // Required to avoid EAI_BADFLAGS error on android.
-    options.family = 4;
-    
-    var req = protocol.request(options, function(res) {
-      var output = '';
-      log(options.host + ':' + res.statusCode);
-      res.setEncoding('utf8');
-      
-      res.on('data', function (chunk) {
-        output += chunk;
-      });
-      
-      res.on('end', function() {
-        onResult(res.statusCode, output);
-      });
-    });
-    
-    req.on('error', function(err) {
-      log("request error: ",err);
-    });
-    
-    if (data) {
-      req.write(data);
-    }
-    
-    req.end();
   };
   
   var sendLayoutFile = function(layoutFile, response, menuItems, contentFile, contentData) {

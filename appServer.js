@@ -7,6 +7,9 @@ module.exports = (function() {
   var log = require("debug")("appServer");
   var DDPServer = require("ddp-server-reactive");
   var shortId = require("shortid");
+  var common = require("./common");
+  var path = require("path");
+  var util = require("util");
   var _config;
   var _ddpServer;
   var _xrh;
@@ -75,8 +78,33 @@ module.exports = (function() {
     }
   };
   
-  var _installApp = function(id, cb) {
+  var _installApp = function(app, cb) {
+    var http = require('http');
+    var path = require("path");
+    var fs = require('fs');
+    var unzip = require("unzip");
     
+    var appPath = path.join(_config.appsPath,app.appId);
+    var appTarget = unzip.Extract({ path: appPath });
+    var request = http.get(app.appURL, function(response) {
+      response.pipe(appTarget);
+      appTarget.on("finish", function() {
+        log("file downloaded");
+        cb();
+      });
+    });
+    
+    request.on("error", function(err) {
+      log("failed to download: %s", err.message);
+      fs.unlink(appPath);
+      cb(err);
+    });
+  };
+  
+  var _removeApp = function(app,cb) {
+    var rimraf = require("rimraf");
+    var appPath = path.join(_config.appsPath,app.appId);
+    rimraf(appPath,cb);
   };
   
   var _startApp = function(app, cb) {
@@ -93,8 +121,6 @@ module.exports = (function() {
       }
     }
     
-    var path = require("path");
-    var util = require("util");
     var spawn = require('child_process').spawn;
     var nodePath = util.format("%snode",_config.nodePath);
     var appArgs = util.format("index.js --appInst=%s --server=%s --port=%d", app.appId, _config.hostname, _config.port).split(" ");
@@ -120,6 +146,7 @@ module.exports = (function() {
     publishAppAction:  _sendAction,
     completeAppAction: _completeAppAction,
     installApp:        _installApp,
+    removeApp:         _removeApp,
     startApp:          _startApp,
     appStartedCallback: _appStartedCallback
   }

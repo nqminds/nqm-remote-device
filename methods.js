@@ -22,13 +22,16 @@ module.exports = (function() {
     
     var _setAppStatus = function(status, app) {
       log("setAppStatus %s to %s", app.appId, status);
-    
+
+      var currentStatus = app.status;
       switch (status) {
         case "run":
           app.status = "starting";
           appServer.startApp(app, function(err, result) {
             if (err) {
               log("failed to set status to %s", app.status);
+              app.status = currentStatus;
+              _sendAppStatusToXRH("/app/dataset/data/update", app);
             } else {
               app.status = "running";
               _sendAppStatusToXRH("/app/dataset/data/update", app);
@@ -41,6 +44,8 @@ module.exports = (function() {
           appServer.installApp(app, function(err, result) {
             if (err) {
               log("failed to set status to %s", app.status);
+              app.status = currentStatus;
+              _sendAppStatusToXRH("/app/dataset/data/update", app);
             } else {
               app.status = "stopped";
               _sendAppStatusToXRH("/app/dataset/data/update", app);
@@ -52,6 +57,8 @@ module.exports = (function() {
           appServer.publishAppAction(app, { cmd: "stop" }, function(err, result) {
             if (err) {
               log("failed to set status to %s", app.status);
+              app.status = currentStatus;
+              _sendAppStatusToXRH("/app/dataset/data/update", app);
             } else {
               app.status = "stopped";
               _sendAppStatusToXRH("/app/dataset/data/update", app);
@@ -59,7 +66,17 @@ module.exports = (function() {
           });
           break;
         case "uninstall":
-          app.status = "pendingInstall";
+          app.status = "removing";
+          appServer.removeApp(app, function(err,result) {
+            if (err) {
+              log("failed to remove app %s: %s",app.appId,err.message);
+              app.status = currentStatus;
+              _sendAppStatusToXRH("/app/dataset/data/update", app);
+            } else {
+              app.status = "pendingInstall";
+              _sendAppStatusToXRH("/app/dataset/data/update", app);
+            }
+          });
           break;
         default:
           log("unknown status: %s",status);

@@ -12,6 +12,7 @@
   "hostURL": "http://localhost:8125",
   "heartbeatInterval": 10000,
   "appDatasetId": "NJxAJbJ8ge",
-  "appsPath": "apps",
+  "appsPath": "./apps",
+  "appDownloadPath": "./appDownload",
   "nodePath": ""
 }
