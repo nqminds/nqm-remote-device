@@ -1,4 +1,6 @@
 {
+  "hostname": "localhost",
+  "port": 8125,
   "xrhServer": "localhost",
   "xrhPort": 2222,
   "ssl": false,
@@ -9,5 +11,7 @@
   "googleSecret": "u5qEQee5Wy3ro5zvW9REDRqM",
   "hostURL": "http://localhost:8125",
   "heartbeatInterval": 10000,
-  "appDatasetId": "NJxAJbJ8ge"
+  "appDatasetId": "NJxAJbJ8ge",
+  "appsPath": "apps",
+  "nodePath": ""
 }

@@ -6,47 +6,55 @@ module.exports = (function() {
   var log = require("debug")("methods");
 
   return function(config, appServer, xrhConnection) {
-    var _sendCommand = function(cmd, params, cb) {
-      // Save command to local file cache.
-      var command = {
-        cmd: cmd,
-        params: params,
-        timestamp: Date.now(),
-      };
-  
-      xrhConnection.call(command.cmd, [config.appDatasetId, command.params], function(err, result) {
+    var _sendAppStatusToXRH = function(cmd, app) {
+      xrhConnection.call(cmd, [config.appDatasetId, app], function(err, result) {
         if (err) {
-          log("command failed: %s: %j", command.cmd, err);
+          log("command failed: %s: %j", cmd, err);
         } else {
-          log("command OK: %s: %j", command.cmd, result);
+          log("command OK: %s: %j", cmd, result);
+          
+          // Command successful => update local cache while waiting for sync.
+          var publication = appServer.getPublication("data-" + config.appDatasetId);
+          publication[app.id].status = app.status;
         }
-        cb(err, result);
       });
     };
     
     var _setAppStatus = function(status, app) {
-      log("setAppStatus %s to %s", app.id, status);
+      log("setAppStatus %s to %s", app.appId, status);
     
       switch (status) {
         case "run":
-          app.status = "running";
-          appServer.sendAppAction(app.id, { cmd: "start" });
+          app.status = "starting";
+          appServer.startApp(app, function(err, result) {
+            if (err) {
+              log("failed to set status to %s", app.status);
+            } else {
+              app.status = "running";
+              _sendAppStatusToXRH("/app/dataset/data/update", app);
+            }
+          });
+          appServer.publishAppAction(app, { cmd: "start" });
           break;
         case "install":
-          app.status = "stopped";
-          break;
-        case "stop":
-          app.status = "stopping";
-          appServer.sendAppAction(app.id, { cmd: "stop" }, function(err, result) {
+          app.status = "installing";
+          appServer.installApp(app, function(err, result) {
             if (err) {
               log("failed to set status to %s", app.status);
             } else {
               app.status = "stopped";
-              _sendCommand("/app/dataset/data/update", app, function() {
-                // Command successful => update local cache while waiting for sync.
-                var collection = appServer.getCollection("data-" + config.appDatasetId);
-                collection[app.id].status = app.status;
-              });
+              _sendAppStatusToXRH("/app/dataset/data/update", app);
+            }
+          });
+          break;
+        case "stop":
+          app.status = "stopping";
+          appServer.publishAppAction(app, { cmd: "stop" }, function(err, result) {
+            if (err) {
+              log("failed to set status to %s", app.status);
+            } else {
+              app.status = "stopped";
+              _sendAppStatusToXRH("/app/dataset/data/update", app);
             }
           });
           break;
@@ -58,11 +66,7 @@ module.exports = (function() {
           break;
       }
     
-      _sendCommand("/app/dataset/data/update", app, function() {
-        // Command successful => update local cache while waiting for sync.
-        var collection = appServer.getCollection("data-" + config.appDatasetId);
-        collection[app.id].status = app.status;
-      });
+      _sendAppStatusToXRH("/app/dataset/data/update", app);
 
       return true;
     };
@@ -70,8 +74,13 @@ module.exports = (function() {
     var _completeAction = function(id, err, result) {
       appServer.completeAppAction(id, err, result);
     };
+  
+    var _appStartedNotification = function(instId) {
+      appServer.appStartedCallback(instId);
+    };
     
     return {
+      appStarted: _appStartedNotification,
       setAppStatus: _setAppStatus,
       completeAction: _completeAction
     }

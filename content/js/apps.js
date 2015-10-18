@@ -6,8 +6,8 @@ var activeItem;
 
 function showAppDetails(bind, propertySheet) {
   var elements = [
-    {label: "deviceId", type: "text", id: "deviceId"},
     {label: "appId", type: "text", id: "appId"},
+    {label: "params", type:"text", id: "params"},
     {label: "name", type: "text", id: "name"},
     {label: "appUrl", type: "text", id: "appUrl"},
     {label: "status", type: "text", id: "status"}
@@ -60,8 +60,8 @@ function appListClick(item, propertySheet) {
   activeItem = item;
   
   var bind = {
-    deviceId: item.deviceId,
     appId: item.appId,
+    params: item.params,
     name: item.name,
     appUrl: item.appURL,
     status: item.status

@@ -37,7 +37,7 @@ module.exports = (function() {
           if (!_xrhObservers["Dataset"]) {
             _xrhObservers["Dataset"] = _xrhConnection.observe("Dataset", _datasetObserver);
           }
-          var datasetCollection = _appServer.getCollection("Dataset");
+          var datasetCollection = _appServer.getPublication("Dataset");
           _startSync(datasetCollection);
           _xrhConnection.subscribe("datasets", { id: _config.appDatasetId});
         }
@@ -56,11 +56,11 @@ module.exports = (function() {
   var _datasetDataObserver = function(dataset) {
     return {
       added: function (dataId) {
-        var dataCollection = _appServer.getCollection("data-" + dataset.id);
+        var dataCollection = _appServer.getPublication("data-" + dataset.id);
         dataCollection[dataId] = _xrhConnection.collection(dataset.store)[dataId];
       },
       changed: function(dataId, oldFields, clearedFields, newFields) {
-        var dataCollection = _appServer.getCollection("data-" + dataset.id);
+        var dataCollection = _appServer.getPublication("data-" + dataset.id);
         var current = _xrhConnection.collection(dataset.store)[dataId];
         for (var clear in clearedFields) {
           delete dataCollection[dataId][clear];
@@ -70,7 +70,7 @@ module.exports = (function() {
         }
       },
       removed: function(dataId, oldValue) {
-        var dataCollection = _appServer.getCollection("data-" + dataset.id);
+        var dataCollection = _appServer.getPublication("data-" + dataset.id);
         delete dataCollection[dataId];
       }
     };
@@ -82,9 +82,9 @@ module.exports = (function() {
       var dataset = _xrhConnection.collection("Dataset")[id];
       log("content is ", dataset);
       // Store dataset in local cache.
-      var collection = _appServer.getCollection("Dataset");
+      var collection = _appServer.getPublication("Dataset");
       collection[id] = dataset;
-      var dataCollection = _appServer.getCollection("data-" + dataset.id);
+      var dataCollection = _appServer.getPublication("data-" + dataset.id);
       if (!_xrhObservers[dataset.store]) {
         _xrhObservers[dataset.store] = _xrhConnection.observe(dataset.store, _datasetDataObserver(dataset));
       }
@@ -93,11 +93,11 @@ module.exports = (function() {
     },
     changed: function(id, oldFields, clearedFields, newFields) {
       var dataset = _xrhConnection.collection("Dataset")[id];
-      var collection = _appServer.getCollection("Dataset");
+      var collection = _appServer.getPublication("Dataset");
       collection[id] = dataset;
     },
     removed: function(id, oldValue) {
-      var collection = _appServer.getCollection("Dataset");
+      var collection = _appServer.getPublication("Dataset");
       delete collection[id];
     }
   };
@@ -108,8 +108,8 @@ module.exports = (function() {
     
     var server = http.createServer(_router.routeRequest);
 
-    server.listen(8125);
-    log("Server running at http://127.0.0.1:8125/");
+    server.listen(config.port, config.hostname);
+    log("Server running at http://%s:%s/",config.hostname,config.port);
   
     _xrhConnection.start(config, xrhConnectionHandler);
     _appServer.start(config, server, _xrhConnection);
