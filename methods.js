@@ -54,7 +54,7 @@ module.exports = (function() {
           break;
         case "stop":
           app.status = "stopping";
-          appServer.publishAppAction(app, { cmd: "stop" }, function(err, result) {
+          appServer.stopApp(app, function(err, result) {
             if (err) {
               log("failed to set status to %s", app.status);
               app.status = currentStatus;
@@ -83,13 +83,14 @@ module.exports = (function() {
           break;
       }
     
+      log("setting (possibly interim) action status: %s", app.status);
       _sendAppStatusToXRH("/app/dataset/data/update", app);
 
       return true;
     };
     
-    var _completeAction = function(id, err, result) {
-      appServer.completeAppAction(id, err, result);
+    var _completeAction = function(instId, actionId, err, result) {
+      appServer.completeAppAction(instId, actionId, err, result);
     };
   
     var _appStartedNotification = function(instId) {

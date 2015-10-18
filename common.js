@@ -16,7 +16,7 @@ module.exports = (function() {
     
     var req = protocol.request(options, function(res) {
       var output = '';
-      log(options.host + ':' + res.statusCode);
+      log(options.hostname + ':' + res.statusCode);
       res.setEncoding('utf8');
       
       res.on('data', function (chunk) {

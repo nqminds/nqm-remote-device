@@ -8,13 +8,14 @@ module.exports = (function() {
   var DDPServer = require("ddp-server-reactive");
   var shortId = require("shortid");
   var common = require("./common");
+  var fs = require("fs");
   var path = require("path");
   var util = require("util");
   var _config;
   var _ddpServer;
   var _xrh;
   var _heartbeat;
-  var _appActions;
+  var _appActions = {};
   var _methods = require("./methods");
   var _publications = {};
   var _actionCallbacks = {};
@@ -26,7 +27,6 @@ module.exports = (function() {
     _ddpServer = new DDPServer({ httpServer: httpServer });
 
     _startHeartbeat(_config.heartbeatInterval);
-    _startAppActions();
     
     // Add methods
     var methods = _methods(config, this, _xrh);
@@ -44,10 +44,6 @@ module.exports = (function() {
     }, interval);
   };
   
-  var _startAppActions = function() {
-    _appActions = {};
-  };
-
   var _getPublication = function(name) {
     if (!_publications[name]) {
       _publications[name] = _ddpServer.publish(name);
@@ -55,26 +51,36 @@ module.exports = (function() {
     return _publications[name];
   };
   
-  var _sendAction = function(app, params, cb) {
+  var _publishAction = function(app, params, cb) {
     var name = "app-" + app.appId;
     var action = {
       id: shortId.generate(),
       params: params
     };
     _actionCallbacks[action.id] = cb;
-    _appActions[name][action.id] = action;
+    if (_appActions[name]) {
+      _appActions[name][action.id] = action;
+    } else {
+      if (cb) {
+        process.nextTick(cb);
+      }
+    }
   };
   
-  var _completeAppAction = function(id, err, result) {
-    log("completing action %s", id);
+  var _completeAppAction = function(instId, actionId, err, result) {
+    log("completing action %s", actionId);
     if (err) {
       log("action error: %s",err.message);
     } else {
       log("action result: ",result);
     }
-    if (_actionCallbacks[id]) {
-      _actionCallbacks[id](err, result);
-      delete _actionCallbacks[id];
+    if (_actionCallbacks[actionId]) {
+      _actionCallbacks[actionId](err, result);
+      delete _actionCallbacks[actionId];
+    }
+    if (_appActions[instId]) {
+      var name = "app-" + instId;
+      delete _appActions[name][actionId]
     }
   };
   
@@ -107,8 +113,44 @@ module.exports = (function() {
     rimraf(appPath,cb);
   };
   
+  var _stopApp = function(app, cb) {
+    _publishAction(app, { cmd: "stop" }, function(err, result) {
+      // At this point the client will have completed the action.
+      var name = "app-" + app.appId;
+      if (_appActions[name]) {
+        // Clear any pending actions.
+        log("clearing existing app actions for %s",name);
+        var keys = Object.keys(_appActions[name]);
+        for (var k in keys) {
+          delete _appActions[name][keys[k]];
+        }
+      }
+      cb(err, result);
+    });
+  };
+  
   var _startApp = function(app, cb) {
-    var name = "app-" + app.appId;
+    _startAppActions(app.id);
+    
+    var spawn = require('child_process').spawn;
+    var nodePath = util.format("%snode",_config.nodePath);
+    var appArgs = util.format("index.js --appInst=%s --server=%s --port=%d", app.appId, _config.hostname, _config.port).split(" ");
+    appArgs = appArgs.concat(app.params.split(" "));
+    var cwd = path.resolve(util.format("%s/%s",_config.appsPath,app.appId));
+  
+    var out = fs.openSync(path.join(cwd,'./out.log'), 'a');
+    var err = fs.openSync(path.join(cwd,'./out.log'), 'a');
+    
+    _appStartCallbacks[app.appId] = cb;
+    log("starting app:");
+    log("%s %j", nodePath, appArgs);
+    log("cwd: %s", cwd);
+    var child = spawn(nodePath, appArgs, { cwd: cwd, stdio: ["ignore", out, err], detached: true });
+    child.unref();
+  };
+
+  var _startAppActions = function(appId) {
+    var name = "app-" + appId;
     if (!_appActions[name]) {
       log("starting publications for application id %s [%s-actions]", name, name);
       _appActions[name] = _ddpServer.publish(name + "-actions");
@@ -120,21 +162,11 @@ module.exports = (function() {
         delete _appActions[name][keys[k]];
       }
     }
-    
-    var spawn = require('child_process').spawn;
-    var nodePath = util.format("%snode",_config.nodePath);
-    var appArgs = util.format("index.js --appInst=%s --server=%s --port=%d", app.appId, _config.hostname, _config.port).split(" ");
-    appArgs = appArgs.concat(app.params.split(" "));
-    var cwd = path.resolve(util.format("%s/%s",_config.appsPath,app.appId));
-  
-    _appStartCallbacks[app.appId] = cb;
-    log("starting app:");
-    log("%s %j", nodePath, appArgs);
-    log("cwd: %s", cwd);
-    spawn(nodePath, appArgs, { cwd: cwd, stdio: "inherit" });
   };
   
   var _appStartedCallback = function(instId) {
+    _startAppActions(instId);
+    
     if (_appStartCallbacks[instId]) {
       _appStartCallbacks[instId]();
     }
@@ -143,11 +175,12 @@ module.exports = (function() {
   return {
     start:             _start,
     getPublication:    _getPublication,
-    publishAppAction:  _sendAction,
+    publishAppAction:  _publishAction,
     completeAppAction: _completeAppAction,
     installApp:        _installApp,
     removeApp:         _removeApp,
     startApp:          _startApp,
+    stopApp:           _stopApp,
     appStartedCallback: _appStartedCallback
   }
 }());

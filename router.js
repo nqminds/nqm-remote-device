@@ -62,7 +62,7 @@ module.exports = (function() {
           'grant_type':    'authorization_code'
         };
         common.httpRequest(options, querystring.stringify(postData), function (status, result) {
-          log("status: %d, result: ", result);
+          log("status: %d, result: ", status, result);
           if (status === 200) {
             var token = JSON.parse(result);
             _accessToken = token.access_token;
