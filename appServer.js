@@ -185,8 +185,8 @@ module.exports = (function() {
     });
   };
   
-  var _sendActionToXRH = function(action) {
-    var command = action._id ? "update" : "create";
+  var _sendActionToXRH = function(action, forceUpdate) {
+    var command = (action._id || forceUpdate) ? "update" : "create";
     _xrh.call("/app/dataset/data/" + command, [_config.actionsDatasetId, action], function(err, result) {
       if (err) {
         log("_sendActionToXRH failed: %s", err.message);
@@ -263,7 +263,7 @@ module.exports = (function() {
               app.status = "stopped";
               _sendAppStatusToXRH(app);
             }
-            _sendActionToXRH(action);
+            _sendActionToXRH(action, true);
             _updateLocalCaches(action);
           });
           _sendActionToXRH(action);
