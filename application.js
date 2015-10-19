@@ -1,19 +1,23 @@
 /**
- * Created by toby on 13/10/15.
+ * Created by toby on 19/10/15.
  */
-  
+
 module.exports = (function() {
   "use strict";
-
-  var log = require("debug")("application");
+  var log = require("debug")("Application");
+  var express = require('express');
   var http = require("http");
-  var _config;
-  var _xrhAccessToken = "";
-  var _router = require("./router");
+  var url = require("url");
+  var querystring = require("querystring");
+  var path = require("path");
+  var util = require("util");
+  var common = require("./common");
   var _xrhConnection = require("./xrhConnection");
   var _appServer = require("./appServer");
+  var _config;
+  var _xrhAccessToken = "";
   var _xrhObservers = {};
-
+  
   var xrhConnectionHandler = function(err, reconnect) {
     if (!err) {
       log("xrh %s", (reconnect ? "re-connected" : "connected"));
@@ -31,7 +35,7 @@ module.exports = (function() {
       _xrhConnection.authenticate(_xrhAccessToken, function(err, result) {
         if (err) {
           log("xrh connection auth error %s", err.message);
-          _clearAccessToken();
+          _xrhAccessToken = "";
         } else {
           log("xrh connection auth result ", result);
           if (!_xrhObservers["Dataset"]) {
@@ -102,26 +106,82 @@ module.exports = (function() {
     }
   };
   
-  function _start(config, loginCB) {
+  var _start = function(config) {
     _config = config;
-    _router.setLoginCallback(_xrhLogin);
+  
+    var app = express();
+  
+    app.set("views", __dirname + "/views");
+    app.set('view engine', 'jade');
+    app.use(express.static(__dirname  + '/public'));
+  
+    app.get('/', function (req, res) {
+      if (!_xrhAccessToken || _xrhAccessToken.length === 0) {
+        res.redirect("/login");
+      } else {
+        res.render("apps");
+      }
+    });
     
-    var server = http.createServer(_router.routeRequest);
-
-    server.listen(config.port, config.hostname);
-    log("Server running at http://%s:%s/",config.hostname,config.port);
+    app.get("/login", function(req, res) {
+      res.render("login");
+    });
+  
+    app.get("/auth", function(request, response) {
+      var oauthURL = util.format("https://accounts.google.com/o/oauth2/auth?response_type=code&client_id=%s&redirect_uri=%s/oauthCB&scope=email%20profile", _config.googleClientId, _config.hostURL);
+      response.writeHead(301, {Location: oauthURL});
+      response.end();
+    });
+    
+    app.get("/oauthCB", function(request, response) {
+      var up = url.parse(request.url);
+      var q = querystring.parse(up.query);
+      if (q.code) {
+        var options = {
+          hostname: 'www.googleapis.com',
+          port:     443,
+          path:     "/oauth2/v3/token",
+          method:   'POST',
+          headers:  {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          }
+        };
+        var postData = {
+          'code':          q.code,
+          'client_id':     _config.googleClientId,
+          'client_secret': _config.googleSecret,
+          'redirect_uri':  _config.hostURL + "/oauthCB",
+          'grant_type':    'authorization_code'
+        };
+        common.httpRequest(options, querystring.stringify(postData), function (status, result) {
+          log("status: %d, result: ", status, result);
+          if (status === 200) {
+            var token = JSON.parse(result);
+            _xrhLogin(token.access_token);
+          }
+          response.writeHead(301, {Location: _config.hostURL});
+          response.end();
+        });
+      }
+    });
+    
+    app.get("/logout", function(request, response) {
+      _xrhLogin("");
+      response.redirect("/login");
+    });
+        
+    var server = app.listen(config.port, config.hostname, function () {
+      var host = server.address().address;
+      var port = server.address().port;
+      log('listening at http://%s:%s', host, port);
+    });
   
     _xrhConnection.start(config, xrhConnectionHandler);
     _appServer.start(config, server, _xrhConnection);
   
-    return server;
-  }
-  
-  function _clearAccessToken() {
-    _xrhAccessToken = "";
-  }
+  };
   
   return {
     start: _start
-  }
-}());  
+  };
+}());
