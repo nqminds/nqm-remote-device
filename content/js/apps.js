@@ -91,8 +91,6 @@ var contentUI = {
           {
             id:        "appsTabBar",
             view:      "tabview",
-            minHeight: 150,
-            maxHeight: 300,
             tabbar:    {optionWidth: 100},
             multiview: {animate: true},
             gravity:   1,
@@ -102,6 +100,8 @@ var contentUI = {
                 body:   {
                   id:       "runningList",
                   view:     "list",
+                  minHeight: 100,
+                  autoheight: true,
                   template: "#name#",
                   css: "secd-apps-list",
                   url:      webix.proxy("ddp", "data-NJxAJbJ8ge")
@@ -124,12 +124,12 @@ var contentUI = {
               {
                 id:     "appDetailsContainer",
                 header: "details",
-                height: 250,
                 body:   {
                   rows: [
                     {
                       id:       "appDetailsData",
                       view:     "property",
+                      autoheight: true,
                       elements: []
                     },
                     {
