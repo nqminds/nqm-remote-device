@@ -20,7 +20,7 @@ webix.ready(function() {
         view:"toolbar",
         height: 45,
         elements: [
-          { view: "label", template: "<div id='picoHeader'><span class='picoHeaderTitle'>SECD &mdash; device management</span>"},
+          { view: "label", template: "<div id='picoHeader'><span class='picoHeaderTitle'>SECD</span>"},
           {},
           {view:"label", template: "<div style='text-align: right;'>toby.ealden</div>" },
           {view:"icon", icon:"user", click: onUserClick },
