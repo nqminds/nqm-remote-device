@@ -88,21 +88,27 @@ module.exports = (function() {
     var http = require('http');
     var path = require("path");
     var fs = require('fs');
-    var unzip = require("unzip");
+    var unzip = require("extract-zip");
     
-    var appPath = path.join(_config.appsPath,app.appId);
-    var appTarget = unzip.Extract({ path: appPath });
+    var filePath = path.join(_config.appDownloadPath,app.appId);
+    var file = fs.createWriteStream(filePath);
     var request = http.get(app.appURL, function(response) {
-      response.pipe(appTarget);
-      appTarget.on("finish", function() {
+      response.pipe(file);
+      file.on("finish", function() {
         log("file downloaded");
-        cb();
+        file.close(function() {
+          var appPath = path.join(_config.appsPath,app.appId);
+          unzip(filePath, { dir: appPath }, function(err) {
+            fs.unlink(filePath);
+            cb(err);
+          });
+        })
       });
     });
     
     request.on("error", function(err) {
       log("failed to download: %s", err.message);
-      fs.unlink(appPath);
+      fs.unlink(filePath);
       cb(err);
     });
   };
