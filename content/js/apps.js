@@ -98,7 +98,7 @@ var contentUI = {
             gravity:   1,
             cells:     [
               {
-                header: "running",
+                header: "apps",
                 body:   {
                   id:       "runningList",
                   view:     "list",
@@ -108,8 +108,12 @@ var contentUI = {
                 }
               },
               {
-                header: "installed",
-                body:   {template: "installed"}
+                header: "config",
+                body:   {template: "configuration"}
+              },
+              {
+                header: "databases",
+                body:   {template: "application databases"}
               }
             ]
           },
