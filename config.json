@@ -5,13 +5,18 @@
   "xrhPort": 2222,
   "ssl": false,
   "autoReconnectTimer": 5000,
-  "deviceId": "galaxy-note",
+  "deviceId": "gn",
   "capCredentials": "VJx8m87Dle:password",
   "googleClientId": "593156495033-lhtutacl11bqq7ed2diobk7ti9u3vcph.apps.googleusercontent.com",
   "googleSecret": "u5qEQee5Wy3ro5zvW9REDRqM",
   "hostURL": "http://localhost:8125",
   "heartbeatInterval": 10000,
   "appDatasetId": "NJxAJbJ8ge",
+  
+  "actionsDatasetId": "Ekxv376Txg",
+  "appListDatasetId": "4k2h_6pgx",
+  "appsInstalledDatasetId": "Nk2Ck0aee",
+  
   "appsPath": "./apps",
   "appDownloadPath": "./appDownload",
   "nodePath": ""

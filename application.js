@@ -14,9 +14,12 @@ module.exports = (function() {
   var common = require("./common");
   var _xrhConnection = require("./xrhConnection");
   var _appServer = require("./appServer");
+  var _ = require("lodash");
   var _config;
   var _xrhAccessToken = "";
   var _xrhObservers = {};
+  var _datasets = {};
+  var _datasetData = {};
   
   var xrhConnectionHandler = function(err, reconnect) {
     if (!err) {
@@ -43,7 +46,8 @@ module.exports = (function() {
           }
           var datasetCollection = _appServer.getPublication("Dataset");
           _startSync(datasetCollection);
-          _xrhConnection.subscribe("datasets", { id: _config.appDatasetId});
+          _xrhConnection.subscribe("datasets", { id: {$in: [_config.appListDatasetId, _config.appsInstalledDatasetId ]} });
+          _xrhConnection.subscribe("datasets", { id: _config.actionsDatasetId });
         }
       });
     } else {
@@ -57,27 +61,78 @@ module.exports = (function() {
     }
   };
   
+  var _publishData = function(dataset, doc) {
+    var publish = {};
+    if (dataset.id === _config.actionsDatasetId) {
+      publish.collection = _appServer.getPublication("actions-" + doc.appId);
+      // For actions we need to use the self-generated id.
+      publish.lookup = doc.id;
+    } else {
+      publish.collection = _appServer.getPublication("data-" + dataset.id);
+      publish.lookup = doc._id;
+    }
+    return publish;
+  };
+  
   var _datasetDataObserver = function(dataset) {
     return {
       added: function (dataId) {
-        var dataCollection = _appServer.getPublication("data-" + dataset.id);
-        dataCollection[dataId] = _xrhConnection.collection(dataset.store)[dataId];
+        // Copy the new document from the xrh collection.
+        var newDoc = _xrhConnection.collection(dataset.store)[dataId];
+  
+        // Publish the new data. 
+        var publish = _publishData(dataset, newDoc);
+        publish.collection[publish.lookup] = newDoc;
+        
+        // Store in local cache.
+        _datasetData[dataset.id][publish.lookup] = newDoc; 
+        if (dataset.id === _config.actionsDatasetId) {
+          _processAction(newDoc);
+        } else if (dataset.id === _config.appsInstalledDatasetId) {
+          _processApp(newDoc);
+        }
       },
       changed: function(dataId, oldFields, clearedFields, newFields) {
-        var dataCollection = _appServer.getPublication("data-" + dataset.id);
+        // Update the document using the data from the xrh collection.
         var current = _xrhConnection.collection(dataset.store)[dataId];
+        
+        // Get the publication.
+        var publish = _publishData(dataset, current);
+        _datasetData[dataset.id][publish.lookup] = current;
+        
+        // Update publication and local cache.
         for (var clear in clearedFields) {
-          delete dataCollection[dataId][clear];
+          delete publish.collection[publish.lookup][clear];
         }
         for (var add in newFields) {
-          dataCollection[dataId][add] = current[add];
+          publish.collection[publish.lookup][add] = current[add];
+        }
+        if (dataset.id === _config.actionsDatasetId) {
+          _processAction(current);
+        } else if (dataset.id === _config.appsInstalledDatasetId) {
+          _processApp(current);
         }
       },
       removed: function(dataId, oldValue) {
-        var dataCollection = _appServer.getPublication("data-" + dataset.id);
-        delete dataCollection[dataId];
+        var publish = _publishData(dataset, oldValue);
+        delete publish.collection[publish.lookup];
+        delete _datasetData[dataset.id][publish.lookup];
       }
     };
+  };
+  
+  var _processAction = function(action) {
+    if (action.status === "pending") {
+      // Perform the action.
+      log("perform pending action: %j", action);
+      _appServer.executeAction(action, function(err, status) {
+        log("_processAction: finished: %s", status);
+      });
+    }
+  };
+
+  var _processApp = function(app) {
+    
   };
   
   var _datasetObserver = {
@@ -88,6 +143,8 @@ module.exports = (function() {
       // Store dataset in local cache.
       var collection = _appServer.getPublication("Dataset");
       collection[id] = dataset;
+      _datasets[dataset.id] = dataset;
+      _datasetData[dataset.id] = {};
       var dataCollection = _appServer.getPublication("data-" + dataset.id);
       if (!_xrhObservers[dataset.store]) {
         _xrhObservers[dataset.store] = _xrhConnection.observe(dataset.store, _datasetDataObserver(dataset));
@@ -99,9 +156,13 @@ module.exports = (function() {
       var dataset = _xrhConnection.collection("Dataset")[id];
       var collection = _appServer.getPublication("Dataset");
       collection[id] = dataset;
+      _datasets[dataset.id] = dataset;
     },
     removed: function(id, oldValue) {
       var collection = _appServer.getPublication("Dataset");
+      var dataset = collection[id];
+      delete _datasets[dataset.id];
+      delete _datasetData[dataset.id];
       delete collection[id];
     }
   };
@@ -119,7 +180,7 @@ module.exports = (function() {
       if (!_xrhAccessToken || _xrhAccessToken.length === 0) {
         res.redirect("/login");
       } else {
-        res.render("apps");
+        res.render("apps", { config: _config });
       }
     });
     
@@ -177,8 +238,7 @@ module.exports = (function() {
     });
   
     _xrhConnection.start(config, xrhConnectionHandler);
-    _appServer.start(config, server, _xrhConnection);
-  
+    _appServer.start(_datasets, _datasetData, config, server, _xrhConnection);
   };
   
   return {

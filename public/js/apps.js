@@ -8,15 +8,15 @@ function showAppDetails(bind, propertySheet) {
   var elements = [
     {label: "appId", type: "text", id: "appId"},
     {label: "params", type:"text", id: "params"},
-    {label: "name", type: "text", id: "name"},
-    {label: "appUrl", type: "text", id: "appUrl"},
+    {label: "title", type: "text", id: "title"},
+    {label: "installUrl", type: "text", id: "installUrl"},
     {label: "status", type: "text", id: "status"}
   ];
   propertySheet.define("elements",elements);
   propertySheet.parse(bind);
   
   $$("install").hide();
-  $$("run").hide();
+  $$("start").hide();
   $$("uninstall").hide();
   $$("stop").hide();
   
@@ -25,7 +25,7 @@ function showAppDetails(bind, propertySheet) {
       $$("install").show();
       break;
     case "stopped":
-      $$("run").show();
+      $$("start").show();
       $$("uninstall").show();
       break;
     case "running":
@@ -62,8 +62,8 @@ function appListClick(item, propertySheet) {
   var bind = {
     appId: item.appId,
     params: item.params,
-    name: item.name,
-    appUrl: item.appURL,
+    title: item.title,
+    installUrl: item.installUrl,
     status: item.status
   };
   showAppDetails(bind, propertySheet);
@@ -102,9 +102,9 @@ var contentUI = {
                   view:     "list",
                   minHeight: 100,
                   autoheight: true,
-                  template: "#name#",
+                  template: "#title#",
                   css: "secd-apps-list",
-                  url:      webix.proxy("ddp", "data-NJxAJbJ8ge")
+                  url:      webix.proxy("ddp", "data-" + _config.appsInstalledDatasetId)
                 }
               },
               {
@@ -141,7 +141,7 @@ var contentUI = {
                       hidden: true,
                       click: onSetStatus
                     },
-                    {id: "run", view: "button", type: "iconButton", icon: "play", label: "run", hidden: true, click: onSetStatus },
+                    {id: "start", view: "button", type: "iconButton", icon: "play", label: "start", hidden: true, click: onSetStatus },
                     {id: "stop", view: "button", type: "iconButton", icon: "stop", label: "stop", hidden: true, click: onSetStatus },
                     {
                       id:     "uninstall",

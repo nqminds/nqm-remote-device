@@ -67,8 +67,10 @@ webix.ready(function() {
   
   ddpClient.connect(function() {
     observeBindings(ddpClient);
+    
     _ddpObserve("Dataset", {
       added: function(doc) {
+        // subscribe to dataset data.
         ddpClient.subscribe("data-" + doc.id);
       }
     });

@@ -4,6 +4,7 @@
 
 module.exports = (function() {
   var log = require("debug")("methods");
+  var shortId = require("shortid");
 
   return function(config, appServer, xrhConnection) {
     var _sendAppStatusToXRH = function(cmd, app) {
@@ -19,8 +20,38 @@ module.exports = (function() {
         }
       });
     };
-    
+  
+    var _sendActionToXRH = function(action) {
+      xrhConnection.call("/app/dataset/data/create", [config.actionsDatasetId, action], function(err, result) {
+        if (err) {
+          log("_sendActionToXRH failed: %s", err.message);
+        } else {
+          log("_sendActionToXRH OK: %j", result);
+        }
+      });
+    };
+  
     var _setAppStatus = function(status, app) {
+      // Create action.
+      var action = {
+        id: shortId.generate(),
+        deviceId: config.deviceId,
+        appId: app.appId,
+        action: status,
+        status: "pending"
+      };
+
+      // Execute the action.
+      appServer.executeAction(action, function(err, status) {
+        if (!err) {
+          //// Send action to xrh.
+          //action.status = status;
+          //_sendActionToXRH(action);
+        }
+      });
+    };
+    
+    var _setAppStatusOld = function(status, app) {
       log("setAppStatus %s to %s", app.appId, status);
 
       var currentStatus = app.status;
