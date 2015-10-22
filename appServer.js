@@ -6,7 +6,6 @@ module.exports = (function() {
   "use strict";
   var log = require("debug")("appServer");
   var DDPServer = require("ddp-server-reactive");
-  var shortId = require("shortid");
   var common = require("./common");
   var fs = require("fs");
   var path = require("path");
@@ -104,19 +103,6 @@ module.exports = (function() {
     rimraf(appPath,cb);
   };
   
-  var _stopApp = function(action, cb) {
-    _sendActionToApp(action, function(err, result) {
-      //// At this point the client will have completed the action.
-      //var appActions = _getPublication("actions-" + action.appId);
-      //// Clear any pending actions.
-      //log("clearing existing action actions for %s",action.appId);
-      //for (var k in appActions) {
-      //  delete appActions[k];
-      //}
-      cb(err, result);
-    });
-  };
-  
   var _startApp = function(app, cb) {
     _startAppActions(app.appId);
     
@@ -159,17 +145,8 @@ module.exports = (function() {
   };
   
   var _sendActionToApp = function(action, cb) {
-    _actionCallbacks[action.id] = function(err) {
-      if (err) {
-        action.status = "error - " + err.message;
-      } else {
-        action.status = "complete";
-      }
-      _updateLocalCaches(action);
-      if (cb) {
-        cb(err, action.status);
-      }
-    };
+    _actionCallbacks[action.id] = cb;
+    _updateLocalCaches(action);
   };
   
   var _sendAppStatusToXRH = function(app) {
@@ -214,9 +191,10 @@ module.exports = (function() {
       return v.deviceId === _config.deviceId && v.appId === action.appId;
     });
     if (app) {
+      var result = false;
       switch (action.action) {
         case "install":
-          _installApp(app, function(err) {
+          result = _installApp(app, function(err) {
             if (err) {
               action.status = "error - " + err.message;
             } else {
@@ -229,7 +207,7 @@ module.exports = (function() {
           });
           break;
         case "uninstall":
-          _removeApp(app, function(err) {
+          result = _removeApp(app, function(err) {
             if (err) {
               action.status = "error - " + err.message;
             } else {
@@ -242,50 +220,54 @@ module.exports = (function() {
           });
           break;
         case "start":
-          _startApp(app, function(err) {
-            if (err) {
-              action.status = "error - " + err.message;
-            } else {
-              action.status = "complete";
-              app.status = "running";
-              _sendAppStatusToXRH(app);
-            }
-            _sendActionToXRH(action);
-            _updateLocalCaches(action);
-          });
+          if (app.status === "stopped") {
+            result = _startApp(app, function(err) {
+              if (err) {
+                action.status = "error - " + err.message;
+              } else {
+                action.status = "complete";
+                app.status = "running";
+                _sendAppStatusToXRH(app);
+              }
+              _sendActionToXRH(action);
+              _updateLocalCaches(action);
+            });
+          } else {
+            log("attempt to start app already running");
+          }
           break;
         case "stop":
-          _stopApp(action, function(err) {
-            if (err) {
-              action.status = "error - " + err.message;
-            } else {
-              action.status = "complete";
-              app.status = "stopped";
-              _sendAppStatusToXRH(app);
-            }
-            _sendActionToXRH(action, true);
-            _updateLocalCaches(action);
-          });
-          _sendActionToXRH(action);
-          _updateLocalCaches(action);
+          if (app.status === "running") {
+            result = _sendActionToApp(action, function(err, result) {
+              // At this point the client will have completed the action.
+              if (err) {
+                action.status = "error - " + err.message;
+              } else {
+                action.status = "complete";
+                app.status = "stopped";
+                _sendAppStatusToXRH(app);
+              }
+              _sendActionToXRH(action);
+              _updateLocalCaches(action);
+            });
+          } else {
+            log("attempt to stop app that is not running");
+          }
           break;
       }
+      return result;
     } else {
       log("action for unknown app: %s",action.appId);
+      return false;
     }
   };
   
   return {
     start:             _start,
     getPublication:    _getPublication,
-    publishAppAction:  _sendActionToApp,
     completeAppAction: _completeAppAction,
-    installApp:        _installApp,
-    removeApp:         _removeApp,
-    startApp:          _startApp,
-    stopApp:           _stopApp,
     appStartedCallback: _appStartedCallback,
-    executeAction: _executeAction
+    executeAction: _executeAction,
   }
 }());
 
