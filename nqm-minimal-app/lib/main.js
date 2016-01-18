@@ -33,6 +33,7 @@ module.exports = (function() {
     var self = this;
     
     self._ddpClient = new DDPClient({
+      url: config.xrhUrl || "",
       host : config.xrhServer,
       port : config.xrhPort,
       ssl  : config.ssl || false,

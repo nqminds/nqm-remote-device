@@ -48,6 +48,7 @@ module.exports = (function() {
           _startSync(datasetCollection);
           _xrhConnection.subscribe("datasets", { id: {$in: [_config.appListDatasetId, _config.appsInstalledDatasetId ]} });
           _xrhConnection.subscribe("datasets", { id: _config.actionsDatasetId });
+          _xrhConnection.subscribe("datasets", { id: _config.configurationDatasetId });
         }
       });
     } else {
@@ -178,7 +179,11 @@ module.exports = (function() {
   
     app.get('/', function (req, res) {
       if (!_xrhAccessToken || _xrhAccessToken.length === 0) {
-        res.redirect("/login");
+        // Hack for demo at Oxford Uni as Wifi there doesn't play well with google oauth.
+//        res.redirect("/login");
+        _xrhLogin("demo-hack");
+        res.render("apps", { config: _config });
+
       } else {
         res.render("apps", { config: _config });
       }

@@ -25,7 +25,8 @@ module.exports = (function() {
       autoReconnectTimer : _config.autoReconnectTimer || 5000,
       maintainCollections : true,
       ddpVersion : '1',
-      useSockJs: false
+      useSockJs: false,
+      url: _config.xrhUrl
     });
 
     _ddpClient.connect(function(err, reconnect) {
@@ -75,14 +76,21 @@ module.exports = (function() {
     if (!_connected || _authenticated) {
       log("not connected or already authenticated");
       return;
-    } 
-    _ddpClient.call("/app/oauth", ["google",token], function(err, result) {
+    }
+    _ddpClient.call("/app/pwdAuth", ["tobyealden@hotmail.com","oranges"], function(err, result) {
       log("ddpAuthenticate callback");
       if (!err) {
         _authenticated = true;
       }
       cb(err, result);
     });
+    //_ddpClient.call("/app/oauth", ["google",token], function(err, result) {
+    //  log("ddpAuthenticate callback");
+    //  if (!err) {
+    //    _authenticated = true;
+    //  }
+    //  cb(err, result);
+    //});
   };
   
   var ddpSubscribe = function(publication, params, cb) {

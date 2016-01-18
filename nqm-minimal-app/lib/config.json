@@ -1,4 +1,5 @@
 {
+  "xrhUrl": "ws://tbx.nqminds.com/websocket",
   "xrhServer": "192.168.1.98",
   "xrhPort": 2222
 }

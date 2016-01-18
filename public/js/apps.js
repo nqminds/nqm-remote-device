@@ -98,18 +98,69 @@ var contentUI = {
               {
                 header: "apps",
                 body:   {
-                  id:       "runningList",
-                  view:     "list",
-                  minHeight: 100,
-                  autoheight: true,
-                  template: "#title#",
-                  css: "secd-apps-list",
-                  url:      webix.proxy("ddp", "data-" + _config.appsInstalledDatasetId)
+                  rows: [
+                    {
+                      id:       "runningList",
+                      view:     "list",
+                      minHeight: 100,
+                      autoheight: true,
+                      template: "#title#",
+                      css: "secd-apps-list",
+                      url: webix.proxy("ddp", "data-" + _config.appsInstalledDatasetId)
+                    },
+                    {
+                      id:      "detailsContainer",
+                      gravity: 1,
+                      rows:    [
+                        {
+                          id:     "appDetailsContainer",
+                          header: "details",
+                          body:   {
+                            rows: [
+                              {
+                                id:       "appDetailsData",
+                                view:     "property",
+                                autoheight: true,
+                                elements: []
+                              },
+                              {
+                                id:     "install",
+                                view:   "button",
+                                type:   "iconButton",
+                                icon:   "download",
+                                label:  "install",
+                                hidden: true,
+                                click: onSetStatus
+                              },
+                              {id: "start", view: "button", type: "iconButton", icon: "play", label: "start", hidden: true, click: onSetStatus },
+                              {id: "stop", view: "button", type: "iconButton", icon: "stop", label: "stop", hidden: true, click: onSetStatus },
+                              {
+                                id:     "uninstall",
+                                view:   "button",
+                                type:   "iconButton",
+                                icon:   "trash-o",
+                                label:  "uninstall",
+                                hidden: true,
+                                click: onSetStatus
+                              },
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ]
                 }
               },
               {
                 header: "config",
-                body:   {template: "configuration"}
+                body:   {
+                  view: "datatable",
+                  columns: [ { id: "key" }, { id: "value", width: 200 }],
+                  autoheight: true,
+                  autowidth: true,
+                  url: webix.proxy("ddp", "data-" + _config.configurationDatasetId),
+                  xCount: 1
+                }
               },
               {
                 header: "databases",
@@ -117,46 +168,6 @@ var contentUI = {
               }
             ]
           },
-          {
-            id:      "detailsContainer",
-            gravity: 1,
-            rows:    [
-              {
-                id:     "appDetailsContainer",
-                header: "details",
-                body:   {
-                  rows: [
-                    {
-                      id:       "appDetailsData",
-                      view:     "property",
-                      autoheight: true,
-                      elements: []
-                    },
-                    {
-                      id:     "install",
-                      view:   "button",
-                      type:   "iconButton",
-                      icon:   "download",
-                      label:  "install",
-                      hidden: true,
-                      click: onSetStatus
-                    },
-                    {id: "start", view: "button", type: "iconButton", icon: "play", label: "start", hidden: true, click: onSetStatus },
-                    {id: "stop", view: "button", type: "iconButton", icon: "stop", label: "stop", hidden: true, click: onSetStatus },
-                    {
-                      id:     "uninstall",
-                      view:   "button",
-                      type:   "iconButton",
-                      icon:   "trash-o",
-                      label:  "uninstall",
-                      hidden: true,
-                      click: onSetStatus
-                    },
-                  ]
-                }
-              }
-            ]
-          }
         ]
       }
     }
