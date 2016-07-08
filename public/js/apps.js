@@ -62,8 +62,8 @@ function appListClick(item, propertySheet) {
   var bind = {
     appId: item.appId,
     params: item.params,
-    name: item.name,
-    appUrl: item.appURL,
+    name: item.title,
+    appUrl: item.installUrl,
     status: item.status
   };
   showAppDetails(bind, propertySheet);
@@ -102,9 +102,9 @@ var contentUI = {
                   view:     "list",
                   minHeight: 100,
                   autoheight: true,
-                  template: "#name#",
+                  template: "#title#",
                   css: "secd-apps-list",
-                  url:      webix.proxy("ddp", "data-NJxAJbJ8ge")
+                  url:      webix.proxy("ddp", "DatasetData")
                 }
               },
               {

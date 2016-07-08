@@ -4,7 +4,7 @@
   
 module.exports = (function() {
   "use strict";
-  var log = require("debug")("xrhConnection");
+  var log = require("debug")("nqm:xrhConnection");
   var DDPClient = require("ddp");
   var _config;
   var _accessToken;
@@ -76,7 +76,7 @@ module.exports = (function() {
       log("not connected or already authenticated");
       return;
     } 
-    _ddpClient.call("/app/oauth", ["google",token], function(err, result) {
+    _ddpClient.call("/app/jwtAuth", [token], function(err, result) {
       log("ddpAuthenticate callback");
       if (!err) {
         _authenticated = true;
@@ -90,7 +90,7 @@ module.exports = (function() {
       log("ddpSubscribe - not connected or authenticated");
       process.nextTick(function() { cb(new Error("not connected or authenticated")); });
     }
-    _ddpClient.subscribe(publication, [params], cb);
+    _ddpClient.subscribe(publication, [].concat(params), cb);
   };
   
   var ddpObserve = function(collection, handlers) {

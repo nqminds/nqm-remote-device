@@ -15,7 +15,7 @@
         "--nolazy","--harmony-proxies"
       ],
       "env": {
-        "DEBUG": "*",
+        "DEBUG": "nqm:*",
         "NODE_ENV": "development"
       },
       "externalConsole": false,

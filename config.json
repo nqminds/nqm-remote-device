@@ -2,7 +2,6 @@
   "hostname": "localhost",
   "port": 8125,
   "xrhServer": "tbx.nqminds.com",
-  "xrhPort": 443,
   "ssl": true,
   "autoReconnectTimer": 5000,
   "deviceId": "galaxy-note",
@@ -11,8 +10,9 @@
   "googleSecret": "u5qEQee5Wy3ro5zvW9REDRqM",
   "hostURL": "http://localhost:8125",
   "heartbeatInterval": 10000,
-  "appDatasetId": "NJxAJbJ8ge",
+  "appDatasetId": "VJgEb5gAPl",
   "appsPath": "./apps",
   "appDownloadPath": "./appDownload",
-  "nodePath": ""
+  "nodePath": "",
+  "authServerURL": "https://tdx.nqminds.com/auth"
 }

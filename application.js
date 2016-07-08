@@ -4,7 +4,7 @@
 
 module.exports = (function() {
   "use strict";
-  var log = require("debug")("Application");
+  var log = require("debug")("nqm:application");
   var express = require('express');
   var http = require("http");
   var url = require("url");
@@ -38,12 +38,12 @@ module.exports = (function() {
           _xrhAccessToken = "";
         } else {
           log("xrh connection auth result ", result);
-          if (!_xrhObservers["Dataset"]) {
-            _xrhObservers["Dataset"] = _xrhConnection.observe("Dataset", _datasetObserver);
+          if (!_xrhObservers["AS.Resource"]) {
+            _xrhObservers["AS.Resource"] = _xrhConnection.observe("AS.Resource", _datasetObserver);
           }
-          var datasetCollection = _appServer.getPublication("Dataset");
+          var datasetCollection = _appServer.getPublication("AS.Resource");
           _startSync(datasetCollection);
-          _xrhConnection.subscribe("datasets", { id: _config.appDatasetId});
+          _xrhConnection.subscribe("resources", { id: _config.appDatasetId});
         }
       });
     } else {
@@ -60,12 +60,14 @@ module.exports = (function() {
   var _datasetDataObserver = function(dataset) {
     return {
       added: function (dataId) {
-        var dataCollection = _appServer.getPublication("data-" + dataset.id);
-        dataCollection[dataId] = _xrhConnection.collection(dataset.store)[dataId];
+        var dataCollection = _appServer.getPublication("DatasetData");
+        var data = _xrhConnection.collection("DatasetData")[dataId];
+        log("content is ", data);
+        dataCollection[dataId] = data; 
       },
       changed: function(dataId, oldFields, clearedFields, newFields) {
-        var dataCollection = _appServer.getPublication("data-" + dataset.id);
-        var current = _xrhConnection.collection(dataset.store)[dataId];
+        var dataCollection = _appServer.getPublication("DatasetData");
+        var current = _xrhConnection.collection("DatasetData")[dataId];
         for (var clear in clearedFields) {
           delete dataCollection[dataId][clear];
         }
@@ -74,7 +76,7 @@ module.exports = (function() {
         }
       },
       removed: function(dataId, oldValue) {
-        var dataCollection = _appServer.getPublication("data-" + dataset.id);
+        var dataCollection = _appServer.getPublication("DatasetData");
         delete dataCollection[dataId];
       }
     };
@@ -83,25 +85,25 @@ module.exports = (function() {
   var _datasetObserver = {
     added: function(id) {
       log("got dataset %s", id);
-      var dataset = _xrhConnection.collection("Dataset")[id];
+      var dataset = _xrhConnection.collection("AS.Resource")[id];
       log("content is ", dataset);
       // Store dataset in local cache.
-      var collection = _appServer.getPublication("Dataset");
+      var collection = _appServer.getPublication("AS.Resource");
       collection[id] = dataset;
-      var dataCollection = _appServer.getPublication("data-" + dataset.id);
-      if (!_xrhObservers[dataset.store]) {
-        _xrhObservers[dataset.store] = _xrhConnection.observe(dataset.store, _datasetDataObserver(dataset));
+      var dataCollection = _appServer.getPublication("DatasetData");
+      if (!_xrhObservers["DatasetData"]) {
+        _xrhObservers["DatasetData"] = _xrhConnection.observe("DatasetData", _datasetDataObserver(dataset));
       }
       _startSync(dataCollection);
-      _xrhConnection.subscribe("datasetData", {id: dataset.id});
+      _xrhConnection.subscribe("datasetData", [dataset.id]);
     },
     changed: function(id, oldFields, clearedFields, newFields) {
-      var dataset = _xrhConnection.collection("Dataset")[id];
-      var collection = _appServer.getPublication("Dataset");
+      var dataset = _xrhConnection.collection("AS.Resource")[id];
+      var collection = _appServer.getPublication("AS.Resource");
       collection[id] = dataset;
     },
     removed: function(id, oldValue) {
-      var collection = _appServer.getPublication("Dataset");
+      var collection = _appServer.getPublication("AS.Resource");
       delete collection[id];
     }
   };
@@ -128,7 +130,7 @@ module.exports = (function() {
     });
   
     app.get("/auth", function(request, response) {
-      var oauthURL = util.format("https://accounts.google.com/o/oauth2/auth?response_type=code&client_id=%s&redirect_uri=%s/oauthCB&scope=email%20profile", _config.googleClientId, _config.hostURL);
+      var oauthURL = util.format("%s/?rurl=%s/oauthCB", _config.authServerURL, _config.hostURL);
       response.writeHead(301, {Location: oauthURL});
       response.end();
     });
@@ -136,32 +138,10 @@ module.exports = (function() {
     app.get("/oauthCB", function(request, response) {
       var up = url.parse(request.url);
       var q = querystring.parse(up.query);
-      if (q.code) {
-        var options = {
-          hostname: 'www.googleapis.com',
-          port:     443,
-          path:     "/oauth2/v3/token",
-          method:   'POST',
-          headers:  {
-            'Content-Type': 'application/x-www-form-urlencoded'
-          }
-        };
-        var postData = {
-          'code':          q.code,
-          'client_id':     _config.googleClientId,
-          'client_secret': _config.googleSecret,
-          'redirect_uri':  _config.hostURL + "/oauthCB",
-          'grant_type':    'authorization_code'
-        };
-        common.httpRequest(options, querystring.stringify(postData), function (status, result) {
-          log("status: %d, result: ", status, result);
-          if (status === 200) {
-            var token = JSON.parse(result);
-            _xrhLogin(token.access_token);
-          }
-          response.writeHead(301, {Location: _config.hostURL});
-          response.end();
-        });
+      if (q.access_token) {
+        _xrhLogin(q.access_token);
+        response.writeHead(301, {Location: _config.hostURL});
+        response.end();
       }
     });
     

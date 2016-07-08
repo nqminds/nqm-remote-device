@@ -4,7 +4,7 @@
 
 module.exports = (function() {
   "use strict";
-  var log = require("debug")("appServer");
+  var log = require("debug")("nqm:appServer");
   var DDPServer = require("ddp-server-reactive");
   var shortId = require("shortid");
   var common = require("./common");

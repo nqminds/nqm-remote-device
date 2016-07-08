@@ -3,7 +3,7 @@
  */
 
 module.exports = (function() {
-  var log = require("debug")("methods");
+  var log = require("debug")("nqm:methods");
 
   return function(config, appServer, xrhConnection) {
     var _sendAppStatusToXRH = function(cmd, app) {

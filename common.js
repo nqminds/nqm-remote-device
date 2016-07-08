@@ -4,12 +4,12 @@
 
 module.exports = (function() {
   "use strict";
-  var log = require("debug")("common");
+  var log = require("debug")("nqm:common");
   var http = require("http");
   var https = require("https");
 
   var basicRequest = function(options, data, onResult) {
-    var protocol = options.port == 443 ? https : http;
+    var protocol = options.port === 443 ? https : http;
     
     // Required to avoid EAI_BADFLAGS error on android.
     options.family = 4;

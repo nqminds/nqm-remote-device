@@ -67,13 +67,13 @@ webix.ready(function() {
   
   ddpClient.connect(function() {
     observeBindings(ddpClient);
-    _ddpObserve("Dataset", {
+    _ddpObserve("AS.Resource", {
       added: function(doc) {
-        ddpClient.subscribe("data-" + doc.id);
+        ddpClient.subscribe("DatasetData");
       }
     });
   
-    ddpClient.subscribe("Dataset", function () {});
+    ddpClient.subscribe("AS.Resource", function () {});
   });
   
   ddpClient.on("close", function() {
