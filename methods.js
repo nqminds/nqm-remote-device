@@ -14,7 +14,7 @@ module.exports = (function() {
           log("command OK: %s: %j", cmd, result);
           
           // Command successful => update local cache while waiting for sync.
-          var publication = appServer.getPublication("data-" + config.appDatasetId);
+          var publication = appServer.getPublication("DatasetData");
           publication[app.id].status = app.status;
         }
       });
@@ -29,7 +29,7 @@ module.exports = (function() {
           app.status = "starting";
           appServer.startApp(app, function(err, result) {
             if (err) {
-              log("failed to set status to %s", app.status);
+              log("failed to set status to %s [%s]", app.status, err.message);
               app.status = currentStatus;
               _sendAppStatusToXRH("/app/dataset/data/update", app);
             } else {
@@ -43,7 +43,7 @@ module.exports = (function() {
           app.status = "installing";
           appServer.installApp(app, function(err, result) {
             if (err) {
-              log("failed to set status to %s", app.status);
+              log("failed to set status to %s [%s]", app.status, err.message);
               app.status = currentStatus;
               _sendAppStatusToXRH("/app/dataset/data/update", app);
             } else {
@@ -56,7 +56,7 @@ module.exports = (function() {
           app.status = "stopping";
           appServer.stopApp(app, function(err, result) {
             if (err) {
-              log("failed to set status to %s", app.status);
+              log("failed to set status to %s [%s]", app.status, err.message);
               app.status = currentStatus;
               _sendAppStatusToXRH("/app/dataset/data/update", app);
             } else {

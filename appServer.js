@@ -92,7 +92,7 @@ module.exports = (function() {
     
     var filePath = path.join(_config.appDownloadPath,app.appId);
     var file = fs.createWriteStream(filePath);
-    var request = http.get(app.appURL, function(response) {
+    var request = http.get(app.installUrl, function(response) {
       response.pipe(file);
       file.on("finish", function() {
         log("file downloaded");
