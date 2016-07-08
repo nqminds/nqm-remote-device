@@ -28,6 +28,7 @@ var ui = { rows:[
         {
           type: "clean",
           rows:[
+            { view:"button", id: "id_create", type: "iconButton", label:"Create", icon:"envelope", width: 95 },
             {
               view:"tree",
               css: "rounded_top",
@@ -59,21 +60,24 @@ var ui = { rows:[
         { type:"wide",rows:[
           { view:"datatable", css: "rounded_top", scrollX:false, columns:[
             { id:"checked", header:{ content:"masterCheckbox" }, template:"{common.checkbox()}", width: 40 },
+            { id:"id", width: 100, header:"Id" },
             { id:"from", width: 250, header:"From" },
             { id:"subject", header:"Subject", fillspace:true },
             { id:"date", header:"Date", width: 150 }
           ], select:"row", data: data, ready:function(){
             //webix.delay(function(){
-            this.select(2);
+            this.select(1);
             //},this);
           }},
           { height: 45, cols:[
-            { view:"button", id: "reply", type: "iconButton",  label:"Reply", icon:"reply", width: 95, hidden: true},
-            { view:"button", type: "iconButton", label:"Create", icon:"envelope", width: 95 },
+            { view:"button", id: "id_reply", type: "icon",  label:"Reply", icon:"reply", width: 95, hidden: true},
+            { view:"button", id: "id_replyall", type: "icon", label:"Reply All", icon:"reply-all", width: 100, hidden: false },
+            { view:"button", id: "id_delete", type: "icon", label:"Delete", icon:"times", width: 95 },
             {},
-            { view:"button", type: "iconButton", label:"Delete", icon:"times", width: 95 }
+            { view:"button", id: "id_prev", type: "icon", icon: "angle-double-left", width: 30 },
+            { view:"button", id: "id_next", type: "icon", icon: "angle-double-right", width: 30 }
           ]},
-          { id:"details", template:"No message selected"}
+			{view:"template", id: "mailview", scroll:"y", template:"No message available"}
         ]}
       ]
         
@@ -84,19 +88,32 @@ var ui = { rows:[
 ]};
 
 webix.ready(function() {
-  webix.ui(ui);
-  $$("$datatable1").bind($$("$tree1"),function(obj,filter){
-    return obj.folder == filter.id;
-  })
-  var message = "Proin id sapien quis tortor condimentum ornare nec ac ligula. " +
-    "Vestibulum varius euismod lacus sit amet eleifend. " +
-    "Quisque in faucibus nulla. Pellentesque a egestas ipsum. " +
-    "Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae;" +
-    " Quisque massa lectus, rutrum vitae risus sit amet, porttitor tempus libero."
-  $$("$datatable1").attachEvent("onAfterSelect",function(){
-    $$("reply").show();
-    $$("details").define("template",message);
-    $$("details").render()
-  })
-  $$("$tree1").select(1);
+
+	webix.ui(ui);
+
+	$$("$datatable1").bind($$("$tree1"),function(obj,filter){
+		return obj.folder == filter.id;
+	});
+
+	$$("$datatable1").attachEvent("onAfterSelect",function(id){
+		webix.ajax("/message?id="+data[this.getItem(id).id].msgid, function(text) {
+    		$$("id_reply").show();
+    		$$("mailview").setHTML(text);
+		});
+  	});
+
+	$$("id_prev").attachEvent("onItemClick", function(id, e){
+    	webix.ajax("/page?id="+data[$$("$datatable1").getSelectedId().id].prevpage, function(text) {
+			console.log(text);
+		});
+	});
+
+	$$("id_next").attachEvent("onItemClick", function(id, e){
+        webix.ajax("/page?id="+data[$$("$datatable1").getSelectedId().id].nextpage, function(text) {
+            console.log(text);
+        });	
+	});
+
+	$$("$tree1").select(1);
+
 });
