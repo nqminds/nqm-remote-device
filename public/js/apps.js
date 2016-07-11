@@ -8,15 +8,15 @@ function showAppDetails(bind, propertySheet) {
   var elements = [
     {label: "appId", type: "text", id: "appId"},
     {label: "params", type:"text", id: "params"},
-    {label: "name", type: "text", id: "name"},
-    {label: "appUrl", type: "text", id: "appUrl"},
+    {label: "title", type: "text", id: "title"},
+    {label: "installUrl", type: "text", id: "installUrl"},
     {label: "status", type: "text", id: "status"}
   ];
   propertySheet.define("elements",elements);
   propertySheet.parse(bind);
   
   $$("install").hide();
-  $$("run").hide();
+  $$("start").hide();
   $$("uninstall").hide();
   $$("stop").hide();
   
@@ -25,7 +25,7 @@ function showAppDetails(bind, propertySheet) {
       $$("install").show();
       break;
     case "stopped":
-      $$("run").show();
+      $$("start").show();
       $$("uninstall").show();
       break;
     case "running":
@@ -62,8 +62,8 @@ function appListClick(item, propertySheet) {
   var bind = {
     appId: item.appId,
     params: item.params,
-    name: item.title,
-    appUrl: item.installUrl,
+    title: item.title,
+    installUrl: item.installUrl,
     status: item.status
   };
   showAppDetails(bind, propertySheet);
@@ -98,18 +98,69 @@ var contentUI = {
               {
                 header: "apps",
                 body:   {
-                  id:       "runningList",
-                  view:     "list",
-                  minHeight: 100,
-                  autoheight: true,
-                  template: "#title#",
-                  css: "secd-apps-list",
-                  url:      webix.proxy("ddp", "DatasetData")
+                  rows: [
+                    {
+                      id:       "runningList",
+                      view:     "list",
+                      minHeight: 100,
+                      autoheight: true,
+                      template: "#title#",
+                      css: "secd-apps-list",
+                      url: webix.proxy("ddp", "data-" + _config.appsInstalledDatasetId)
+                    },
+                    {
+                      id:      "detailsContainer",
+                      gravity: 1,
+                      rows:    [
+                        {
+                          id:     "appDetailsContainer",
+                          header: "details",
+                          body:   {
+                            rows: [
+                              {
+                                id:       "appDetailsData",
+                                view:     "property",
+                                autoheight: true,
+                                elements: []
+                              },
+                              {
+                                id:     "install",
+                                view:   "button",
+                                type:   "iconButton",
+                                icon:   "download",
+                                label:  "install",
+                                hidden: true,
+                                click: onSetStatus
+                              },
+                              {id: "start", view: "button", type: "iconButton", icon: "play", label: "start", hidden: true, click: onSetStatus },
+                              {id: "stop", view: "button", type: "iconButton", icon: "stop", label: "stop", hidden: true, click: onSetStatus },
+                              {
+                                id:     "uninstall",
+                                view:   "button",
+                                type:   "iconButton",
+                                icon:   "trash-o",
+                                label:  "uninstall",
+                                hidden: true,
+                                click: onSetStatus
+                              },
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ]
                 }
               },
               {
                 header: "config",
-                body:   {template: "configuration"}
+                body:   {
+                  view: "datatable",
+                  columns: [ { id: "key" }, { id: "value", width: 200 }],
+                  autoheight: true,
+                  autowidth: true,
+                  url: webix.proxy("ddp", "data-" +  _config.configurationDatasetId),
+                  xCount: 1
+                }
               },
               {
                 header: "databases",
@@ -117,46 +168,6 @@ var contentUI = {
               }
             ]
           },
-          {
-            id:      "detailsContainer",
-            gravity: 1,
-            rows:    [
-              {
-                id:     "appDetailsContainer",
-                header: "details",
-                body:   {
-                  rows: [
-                    {
-                      id:       "appDetailsData",
-                      view:     "property",
-                      autoheight: true,
-                      elements: []
-                    },
-                    {
-                      id:     "install",
-                      view:   "button",
-                      type:   "iconButton",
-                      icon:   "download",
-                      label:  "install",
-                      hidden: true,
-                      click: onSetStatus
-                    },
-                    {id: "run", view: "button", type: "iconButton", icon: "play", label: "run", hidden: true, click: onSetStatus },
-                    {id: "stop", view: "button", type: "iconButton", icon: "stop", label: "stop", hidden: true, click: onSetStatus },
-                    {
-                      id:     "uninstall",
-                      view:   "button",
-                      type:   "iconButton",
-                      icon:   "trash-o",
-                      label:  "uninstall",
-                      hidden: true,
-                      click: onSetStatus
-                    },
-                  ]
-                }
-              }
-            ]
-          }
         ]
       }
     }

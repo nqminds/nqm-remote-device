@@ -6,22 +6,24 @@ module.exports = (function() {
   "use strict";
   var log = require("debug")("nqm:appServer");
   var DDPServer = require("ddp-server-reactive");
-  var shortId = require("shortid");
   var common = require("./common");
   var fs = require("fs");
   var path = require("path");
   var util = require("util");
+  var _ = require("lodash");
   var _config;
   var _ddpServer;
   var _xrh;
   var _heartbeat;
-  var _appActions = {};
   var _methods = require("./methods");
   var _publications = {};
   var _actionCallbacks = {};
   var _appStartCallbacks = {};
+  var _datasets, _datasetData;
   
-  var _start = function(config, httpServer, xrh) {
+  var _start = function(datasets, datasetData, config, httpServer, xrh) {
+    _datasets = datasets;
+    _datasetData = datasetData;
     _config = config;
     _xrh = xrh;
     _ddpServer = new DDPServer({ httpServer: httpServer });
@@ -51,22 +53,6 @@ module.exports = (function() {
     return _publications[name];
   };
   
-  var _publishAction = function(app, params, cb) {
-    var name = "app-" + app.appId;
-    var action = {
-      id: shortId.generate(),
-      params: params
-    };
-    _actionCallbacks[action.id] = cb;
-    if (_appActions[name]) {
-      _appActions[name][action.id] = action;
-    } else {
-      if (cb) {
-        process.nextTick(cb);
-      }
-    }
-  };
-  
   var _completeAppAction = function(instId, actionId, err, result) {
     log("completing action %s", actionId);
     if (err) {
@@ -78,10 +64,8 @@ module.exports = (function() {
       _actionCallbacks[actionId](err, result);
       delete _actionCallbacks[actionId];
     }
-    if (_appActions[instId]) {
-      var name = "app-" + instId;
-      delete _appActions[name][actionId]
-    }
+    var appActions = _getPublication("actions-" + instId);
+    delete appActions[actionId];
   };
   
   var _installApp = function(app, cb) {
@@ -119,24 +103,8 @@ module.exports = (function() {
     rimraf(appPath,cb);
   };
   
-  var _stopApp = function(app, cb) {
-    _publishAction(app, { cmd: "stop" }, function(err, result) {
-      // At this point the client will have completed the action.
-      var name = "app-" + app.appId;
-      if (_appActions[name]) {
-        // Clear any pending actions.
-        log("clearing existing app actions for %s",name);
-        var keys = Object.keys(_appActions[name]);
-        for (var k in keys) {
-          delete _appActions[name][keys[k]];
-        }
-      }
-      cb(err, result);
-    });
-  };
-  
   var _startApp = function(app, cb) {
-    _startAppActions(app.id);
+    _startAppActions(app.appId);
     
     var spawn = require('child_process').spawn;
     var nodePath = util.format("%snode",_config.nodePath);
@@ -156,38 +124,150 @@ module.exports = (function() {
   };
 
   var _startAppActions = function(appId) {
-    var name = "app-" + appId;
-    if (!_appActions[name]) {
-      log("starting publications for application id %s [%s-actions]", name, name);
-      _appActions[name] = _ddpServer.publish(name + "-actions");
-    } else {
-      // Clear any existing actions.
-      log("clearing existing app actions for %s",name);
-      var keys = Object.keys(_appActions[name]);
-      for (var k in keys) {
-        delete _appActions[name][keys[k]];
-      }
-    }
+    //var appActions = _getPublication("actions-" + appId);
+
+    //// Clear any existing actions.
+    //log("clearing existing app actions for %s",appId);
+    //for (var k in appActions) {
+    //  delete appActions[k];
+    //}
+    //delete _datasetData[_config.actionsDatasetId][appId];
   };
   
   var _appStartedCallback = function(instId) {
+    // This may be called in 2 scenarios: 
+    // 1 - in response to a start action we've issued.
+    // 2 - if the app is already running when we start up - it will re-connect.
     _startAppActions(instId);
-    
     if (_appStartCallbacks[instId]) {
       _appStartCallbacks[instId]();
+    }
+  };
+  
+  var _sendActionToApp = function(action, cb) {
+    _actionCallbacks[action.id] = cb;
+    _updateLocalCaches(action);
+  };
+  
+  var _sendAppStatusToXRH = function(app) {
+    _xrh.call("/app/dataset/data/update", [_config.appsInstalledDatasetId, app], function(err, result) {
+      if (err) {
+        log("_sendAppStatusToXRH failed: %s", err.message);
+      } else {
+        log("_sendAppStatusToXRH OK: %j", result);
+      }
+      // Update local cache while waiting for sync.
+      var publication = _getPublication("data-" + _config.appsInstalledDatasetId);
+      publication[app._id].status = app.status;
+    });
+  };
+  
+  var _sendActionToXRH = function(action, forceUpdate) {
+    var command = (action._id || forceUpdate) ? "update" : "create";
+    _xrh.call("/app/dataset/data/" + command, [_config.actionsDatasetId, action], function(err, result) {
+      if (err) {
+        log("_sendActionToXRH failed: %s", err.message);
+      } else {
+        log("_sendActionToXRH OK: %j", result);
+      }
+    });
+  };
+
+  var _updateLocalCaches = function(action) {
+    var appActions = _getPublication("actions-" + action.appId);
+    if (appActions[action.id]) {
+      appActions[action.id].status = action.status;
+      _datasetData[_config.actionsDatasetId][action.id].status = action.status;
+    } else {
+      appActions[action.id] = action;
+      _datasetData[_config.actionsDatasetId][action.id] = action;
+    }
+  };
+  
+  var _executeAction = function(action, cb) {
+    // Get the app.
+    var appDatasetData = _datasetData[_config.appsInstalledDatasetId];
+    var app = _.find(appDatasetData, function(v,k) {
+      return v.deviceId === _config.deviceId && v.appId === action.appId;
+    });
+    if (app) {
+      var result = false;
+      switch (action.action) {
+        case "install":
+          result = _installApp(app, function(err) {
+            if (err) {
+              action.status = "error - " + err.message;
+            } else {
+              app.status = "stopped";
+              _sendAppStatusToXRH(app);
+              action.status = "complete";
+            }
+            _sendActionToXRH(action);
+            _updateLocalCaches(action);
+          });
+          break;
+        case "uninstall":
+          result = _removeApp(app, function(err) {
+            if (err) {
+              action.status = "error - " + err.message;
+            } else {
+              action.status = "complete";
+              app.status = "pendingInstall";
+              _sendAppStatusToXRH(app);
+            }
+            _sendActionToXRH(action);
+            _updateLocalCaches(action);
+          });
+          break;
+        case "start":
+          if (app.status === "stopped") {
+            result = _startApp(app, function(err) {
+              if (err) {
+                action.status = "error - " + err.message;
+              } else {
+                action.status = "complete";
+                app.status = "running";
+                _sendAppStatusToXRH(app);
+              }
+              _sendActionToXRH(action);
+              _updateLocalCaches(action);
+            });
+          } else {
+            log("attempt to start app already running");
+          }
+          break;
+        case "stop":
+          if (app.status === "running") {
+            result = _sendActionToApp(action, function(err, result) {
+              // At this point the client will have completed the action.
+              if (err) {
+                action.status = "error - " + err.message;
+              } else {
+                action.status = "complete";
+                app.status = "stopped";
+                _sendAppStatusToXRH(app);
+              }
+              _sendActionToXRH(action);
+              _updateLocalCaches(action);
+            });
+          } else {
+            log("attempt to stop app that is not running");
+          }
+          break;
+      }
+      return result;
+    } else {
+      log("action for unknown app: %s",action.appId);
+      return false;
     }
   };
   
   return {
     start:             _start,
     getPublication:    _getPublication,
-    publishAppAction:  _publishAction,
     completeAppAction: _completeAppAction,
-    installApp:        _installApp,
-    removeApp:         _removeApp,
-    startApp:          _startApp,
-    stopApp:           _stopApp,
-    appStartedCallback: _appStartedCallback
+    appStartedCallback: _appStartedCallback,
+    executeAction: _executeAction,
   }
 }());
 

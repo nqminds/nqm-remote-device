@@ -46,10 +46,10 @@ module.exports = (function() {
         } else {
           log("DDP connected");
           _observe.call(self, "heartbeat", { added: _heartbeatObserverCB, changed: _heartbeatObserverCB });
-          _observe.call(self, "app-" + self._args.appInst + "-actions", actionsObserver);
+          _observe.call(self, "actions-" + self._args.appInst, actionsObserver);
         }
         self._ddpClient.subscribe("heartbeat");
-        self._ddpClient.subscribe("app-" + self._args.appInst + "-actions");
+        self._ddpClient.subscribe("actions-" + self._args.appInst);
         self._ddpClient.call("appStarted", [self._args.appInst]);
         self._heartbeat = Date.now();
       }
@@ -74,7 +74,7 @@ module.exports = (function() {
   var _actionProcessor = function(action) {
     var self = this;
     
-    switch (action.params.cmd) {
+    switch (action.action) {
       case "stop":
         log("received stop action");
         self._ddpClient.call("completeAction", [self._args.instId, action.id, null, {ok: true}], function(err, result) {
@@ -86,7 +86,7 @@ module.exports = (function() {
         });
         break;
       default:
-        log("ignoring unknown action: %s",action.params.cmd);
+        log("ignoring unknown action: %s",action.action);
         break;
     }
   };
@@ -94,12 +94,17 @@ module.exports = (function() {
   var actionsObserver = {
     added: function(appId) {
       log("new action: %s", appId);
-      var newAction = this._ddpClient.collections["app-" + this._args.appInst + "-actions"][appId];
-      _actionProcessor.call(this, newAction);
+      var newAction = this._ddpClient.collections["actions-" + this._args.appInst][appId];
+      if (newAction.status === "pending") {
+        _actionProcessor.call(this, newAction);
+      }
     },
     changed: function(id, oldFields, clearedFields, newFields) {
       log("new action: %s", newFields);
-      _actionProcessor.call(this, newFields);
+      var action = this._ddpClient.collections["actions-" + this._args.appInst][id];
+      if (action && action.status === "pending") {
+        _actionProcessor.call(this, newFields);
+      }
     },
     removed: function(action) {
       log("removed action: %s",action);

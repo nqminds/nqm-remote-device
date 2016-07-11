@@ -12,42 +12,47 @@ module.exports = (function() {
   var path = require("path");
   var util = require("util");
   var common = require("./common");
-  var _xrhConnection = require("./xrhConnection");
+  var _tdxConnection = require("./tdxConnection");
   var _appServer = require("./appServer");
+  var _ = require("lodash");
   var _config;
-  var _xrhAccessToken = "";
-  var _xrhObservers = {};
+  var _tdxAccessToken = "";
+  var _tdxObservers = {};
+  var _datasets = {};
+  var _datasetData = {};
   
-  var xrhConnectionHandler = function(err, reconnect) {
+  var tdxConnectionHandler = function(err, reconnect) {
     if (!err) {
-      log("xrh %s", (reconnect ? "re-connected" : "connected"));
-      if (_xrhAccessToken) {
-        _xrhLogin(_xrhAccessToken);
+      log("tdx %s", (reconnect ? "re-connected" : "connected"));
+      if (_tdxAccessToken) {
+        _tdxLogin(_tdxAccessToken);
       }
     } else {
-      log("xrh connection failed: %s",err.message);
+      log("tdx connection failed: %s",err.message);
     }
   };
   
-  var _xrhLogin = function(accessToken) {
-    _xrhAccessToken = accessToken;
-    if (_xrhAccessToken.length > 0) {
-      _xrhConnection.authenticate(_xrhAccessToken, function(err, result) {
+  var _tdxLogin = function(accessToken) {
+    _tdxAccessToken = accessToken;
+    if (_tdxAccessToken.length > 0) {
+      _tdxConnection.authenticate(_tdxAccessToken, function(err, result) {
         if (err) {
-          log("xrh connection auth error %s", err.message);
-          _xrhAccessToken = "";
+          log("tdx connection auth error %s", err.message);
+          _tdxAccessToken = "";
         } else {
-          log("xrh connection auth result ", result);
-          if (!_xrhObservers["AS.Resource"]) {
-            _xrhObservers["AS.Resource"] = _xrhConnection.observe("AS.Resource", _datasetObserver);
+          log("tdx connection auth result ", result);
+          if (!_tdxObservers["AS.Resource"]) {
+            _tdxObservers["AS.Resource"] = _tdxConnection.observe("AS.Resource", _tdxDatasetObserver);
           }
           var datasetCollection = _appServer.getPublication("AS.Resource");
           _startSync(datasetCollection);
-          _xrhConnection.subscribe("resources", { id: _config.appDatasetId});
+          _tdxConnection.subscribe("resources", { id: _config.appsInstalledDatasetId });
+          _tdxConnection.subscribe("resources", { id: _config.actionsDatasetId });
+          _tdxConnection.subscribe("resources", { id: _config.configurationDatasetId });
         }
       });
     } else {
-      // TODO - notify ddp clients that xrh is down?
+      // TODO - notify ddp clients that tdx is down?
     }
   };
   
@@ -57,53 +62,115 @@ module.exports = (function() {
     }
   };
   
-  var _datasetDataObserver = function(dataset) {
+  var _publishData = function(dataset, doc) {
+    var publish = {};
+    if (dataset.id === _config.actionsDatasetId) {
+      publish.collection = _appServer.getPublication("actions-" + doc.appId);
+      // For actions we need to use the self-generated id.
+      publish.lookup = doc.id;
+    } else {
+      publish.collection = _appServer.getPublication("data-" + dataset.id);
+      publish.lookup = doc._id;
+    }
+    return publish;
+  };
+  
+  var _tdxDatasetDataObserver = function(dataset) {
     return {
       added: function (dataId) {
-        var dataCollection = _appServer.getPublication("DatasetData");
-        var data = _xrhConnection.collection("DatasetData")[dataId];
-        log("content is ", data);
-        dataCollection[dataId] = data; 
+        // Copy the new document from the tdx collection.
+        var newDoc = _tdxConnection.collection("DatasetData")[dataId];
+  
+        if (newDoc._d === dataset.id) {
+          // Publish the new data. 
+          var publish = _publishData(dataset, newDoc);
+          publish.collection[publish.lookup] = newDoc;
+          
+          // Store in local cache.
+          _datasetData[dataset.id][publish.lookup] = newDoc; 
+          if (dataset.id === _config.actionsDatasetId) {
+            _processAction(newDoc);
+          } else if (dataset.id === _config.appsInstalledDatasetId) {
+            _processApp(newDoc);
+          }
+        }
       },
       changed: function(dataId, oldFields, clearedFields, newFields) {
-        var dataCollection = _appServer.getPublication("DatasetData");
-        var current = _xrhConnection.collection("DatasetData")[dataId];
-        for (var clear in clearedFields) {
-          delete dataCollection[dataId][clear];
-        }
-        for (var add in newFields) {
-          dataCollection[dataId][add] = current[add];
+        // Update the document using the data from the tdx collection.
+        var current = _tdxConnection.collection("DatasetData")[dataId];
+        
+        if (current._d === dataset.id) {
+          // Get the publication.
+          var publish = _publishData(dataset, current);
+          _datasetData[dataset.id][publish.lookup] = current;
+          
+          // Update publication and local cache.
+          for (var clear in clearedFields) {
+            delete publish.collection[publish.lookup][clear];
+          }
+          for (var add in newFields) {
+            publish.collection[publish.lookup][add] = current[add];
+          }
+          if (dataset.id === _config.actionsDatasetId) {
+            _processAction(current);
+          } else if (dataset.id === _config.appsInstalledDatasetId) {
+            _processApp(current);
+          }
         }
       },
       removed: function(dataId, oldValue) {
-        var dataCollection = _appServer.getPublication("DatasetData");
-        delete dataCollection[dataId];
+        if (oldValue._d === dataset.id) {
+          var publish = _publishData(dataset, oldValue);
+          delete publish.collection[publish.lookup];
+          delete _datasetData[dataset.id][publish.lookup];
+        }
       }
     };
   };
   
-  var _datasetObserver = {
+  var _processAction = function(action) {
+    if (action.status === "pending") {
+      // Perform the action.
+      log("perform pending action: %j", action);
+      _appServer.executeAction(action, function(err, status) {
+        log("_processAction: finished: %s", status);
+      });
+    }
+  };
+
+  var _processApp = function(app) {
+    
+  };
+  
+  var _tdxDatasetObserver = {
     added: function(id) {
       log("got dataset %s", id);
-      var dataset = _xrhConnection.collection("AS.Resource")[id];
+      var dataset = _tdxConnection.collection("AS.Resource")[id];
       log("content is ", dataset);
       // Store dataset in local cache.
       var collection = _appServer.getPublication("AS.Resource");
       collection[id] = dataset;
-      var dataCollection = _appServer.getPublication("DatasetData");
-      if (!_xrhObservers["DatasetData"]) {
-        _xrhObservers["DatasetData"] = _xrhConnection.observe("DatasetData", _datasetDataObserver(dataset));
+      _datasets[dataset.id] = dataset;
+      _datasetData[dataset.id] = {};
+      var dataCollectionName = "data-" + dataset.id;
+      var dataCollection = _appServer.getPublication(dataCollectionName);
+      if (!_tdxObservers[dataCollectionName]) {
+        _tdxObservers[dataCollectionName] = _tdxConnection.observe("DatasetData", _tdxDatasetDataObserver(dataset));
       }
       _startSync(dataCollection);
-      _xrhConnection.subscribe("datasetData", [dataset.id]);
+      _tdxConnection.subscribe("datasetData", [dataset.id]);
     },
     changed: function(id, oldFields, clearedFields, newFields) {
-      var dataset = _xrhConnection.collection("AS.Resource")[id];
+      var dataset = _tdxConnection.collection("AS.Resource")[id];
       var collection = _appServer.getPublication("AS.Resource");
       collection[id] = dataset;
+      _datasets[dataset.id] = dataset;
     },
     removed: function(id, oldValue) {
       var collection = _appServer.getPublication("AS.Resource");
+      var dataset = collection[id];
+      delete _datasets[dataset.id];
+      delete _datasetData[dataset.id];
       delete collection[id];
     }
   };
@@ -118,10 +185,10 @@ module.exports = (function() {
     app.use(express.static(__dirname  + '/public'));
   
     app.get('/', function (req, res) {
-      if (!_xrhAccessToken || _xrhAccessToken.length === 0) {
+      if (!_tdxAccessToken || _tdxAccessToken.length === 0) {
         res.redirect("/login");
       } else {
-        res.render("apps");
+        res.render("apps", { config: _config });
       }
     });
     
@@ -139,14 +206,14 @@ module.exports = (function() {
       var up = url.parse(request.url);
       var q = querystring.parse(up.query);
       if (q.access_token) {
-        _xrhLogin(q.access_token);
+        _tdxLogin(q.access_token);
         response.writeHead(301, {Location: _config.hostURL});
         response.end();
       }
     });
     
     app.get("/logout", function(request, response) {
-      _xrhLogin("");
+      _tdxLogin("");
       response.redirect("/login");
     });
         
@@ -156,9 +223,8 @@ module.exports = (function() {
       log('listening at http://%s:%s', host, port);
     });
   
-    _xrhConnection.start(config, xrhConnectionHandler);
-    _appServer.start(config, server, _xrhConnection);
-  
+    _tdxConnection.start(config, tdxConnectionHandler);
+    _appServer.start(_datasets, _datasetData, config, server, _tdxConnection);
   };
   
   return {

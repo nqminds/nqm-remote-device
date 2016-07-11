@@ -22136,7 +22136,8 @@ webix.ready(function() {
     observeBindings(ddpClient);
     _ddpObserve("AS.Resource", {
       added: function(doc) {
-        ddpClient.subscribe("DatasetData");
+        // subscribe to dataset data.
+        ddpClient.subscribe("data-" + doc.id);
       }
     });
   

@@ -4,7 +4,7 @@
   
 module.exports = (function() {
   "use strict";
-  var log = require("debug")("nqm:xrhConnection");
+  var log = require("debug")("nqm:tdxConnection");
   var DDPClient = require("ddp");
   var _config;
   var _accessToken;
@@ -25,7 +25,8 @@ module.exports = (function() {
       autoReconnectTimer : _config.autoReconnectTimer || 5000,
       maintainCollections : true,
       ddpVersion : '1',
-      useSockJs: false
+      useSockJs: false,
+      url: _config.xrhUrl
     });
 
     _ddpClient.connect(function(err, reconnect) {
