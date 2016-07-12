@@ -1,22 +1,20 @@
 {
   "hostname": "localhost",
   "port": 8125,
-  "xrhUrl": "ws://localhost:2222/websocket",
-  "xrhServer": "localhost",
-  "xrhPort": 2222,
-  "ssl": false,
+  "xrhUrl": "wss://tbx.nqminds.com/websocket",
+  "ssl": true,
   "autoReconnectTimer": 5000,
-  "deviceId": "secd-1",
+  "deviceId": "Galaxy-N",
   "hostURL": "http://localhost:8125",
   "heartbeatInterval": 10000,
 
-  "actionsDatasetId": "E1e51SRuIW",
-  "appListDatasetId": "NkeLNAn_8Z",
-  "appsInstalledDatasetId": "NkeLNAn_8Z",
-  "configurationDatasetId": "VkxYkICO8Z",
+  "actionsDatasetId": "V1bsQtxCPg",
+  "appListDatasetId": "E1x7qYxRwx",
+  "appsInstalledDatasetId": "VJgEb5gAPl",
+  "configurationDatasetId": "E1xuPTI1Og",
   
   "appsPath": "./apps",
   "appDownloadPath": "./appDownload",
   "nodePath": "",
-  "authServerURL": "https://localhost:4443/auth"
+  "authServerURL": "https://tdx.nqminds.com/auth"
 }

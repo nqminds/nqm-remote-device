@@ -158,7 +158,7 @@ module.exports = (function() {
         _tdxObservers[dataCollectionName] = _tdxConnection.observe("DatasetData", _tdxDatasetDataObserver(dataset));
       }
       _startSync(dataCollection);
-      _tdxConnection.subscribe("datasetData", [dataset.id]);
+      _tdxConnection.subscribe("datasetData", [dataset.id, { deviceId: _config.deviceId }]);
     },
     changed: function(id, oldFields, clearedFields, newFields) {
       var dataset = _tdxConnection.collection("AS.Resource")[id];

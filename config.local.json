@@ -1,0 +1,22 @@
+{
+  "hostname": "localhost",
+  "port": 8125,
+  "xrhUrl": "ws://localhost:2222/websocket",
+  "xrhServer": "localhost",
+  "xrhPort": 2222,
+  "ssl": false,
+  "autoReconnectTimer": 5000,
+  "deviceId": "secd-1",
+  "hostURL": "http://localhost:8125",
+  "heartbeatInterval": 10000,
+
+  "actionsDatasetId": "E1e51SRuIW",
+  "appListDatasetId": "NkeLNAn_8Z",
+  "appsInstalledDatasetId": "NkeLNAn_8Z",
+  "configurationDatasetId": "VkxYkICO8Z",
+  
+  "appsPath": "./apps",
+  "appDownloadPath": "./appDownload",
+  "nodePath": "",
+  "authServerURL": "https://localhost:4443/auth"
+}
