@@ -4,14 +4,14 @@
   "xrhUrl": "wss://tbx.nqminds.com/websocket",
   "ssl": true,
   "autoReconnectTimer": 5000,
-  "deviceId": "Galaxy-N",
+  "deviceId": "secd-1",
   "hostURL": "http://localhost:8125",
   "heartbeatInterval": 10000,
 
   "actionsDatasetId": "V1bsQtxCPg",
   "appListDatasetId": "E1x7qYxRwx",
   "appsInstalledDatasetId": "VJgEb5gAPl",
-  "configurationDatasetId": "E1xuPTI1Og",
+  "configurationDatasetId": "Skxy7vd7P",
   
   "appsPath": "./apps",
   "appDownloadPath": "./appDownload",
