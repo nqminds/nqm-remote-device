@@ -19,10 +19,9 @@ module.exports = (function() {
   var _publications = {};
   var _actionCallbacks = {};
   var _appStartCallbacks = {};
-  var _datasets, _datasetData;
+  var _datasetData;
   
-  var _start = function(datasets, datasetData, config, httpServer, xrh) {
-    _datasets = datasets;
+  var _start = function(datasetData, config, httpServer, xrh) {
     _datasetData = datasetData;
     _config = config;
     _xrh = xrh;
@@ -185,6 +184,8 @@ module.exports = (function() {
   };
   
   var _executeAction = function(action, cb) {
+    var appCollection = _getPublication("data-" + _config.appsInstalledDatasetId);
+    var app = appCollection
     // Get the app.
     var appDatasetData = _datasetData[_config.appsInstalledDatasetId];
     var app = _.find(appDatasetData, function(v,k) {
