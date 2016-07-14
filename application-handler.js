@@ -10,7 +10,7 @@ module.exports = (function() {
         return _appServer.getPublication("data-" + datasetId);
       },
       getKey: function(doc) {
-        return doc._id;
+        return doc.id;
       },
       added: function(doc) {
         log("new application: ", doc);

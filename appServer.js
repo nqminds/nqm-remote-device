@@ -6,7 +6,6 @@ module.exports = (function() {
   "use strict";
   var log = require("debug")("nqm:appServer");
   var DDPServer = require("ddp-server-reactive");
-  var common = require("./common");
   var fs = require("fs");
   var path = require("path");
   var util = require("util");
@@ -19,10 +18,8 @@ module.exports = (function() {
   var _publications = {};
   var _actionCallbacks = {};
   var _appStartCallbacks = {};
-  var _datasetData;
   
-  var _start = function(datasetData, config, httpServer, xrh) {
-    _datasetData = datasetData;
+  var _start = function(config, httpServer, xrh) {
     _config = config;
     _xrh = xrh;
     _ddpServer = new DDPServer({ httpServer: httpServer });
@@ -73,14 +70,14 @@ module.exports = (function() {
     var fs = require('fs');
     var unzip = require("extract-zip");
     
-    var filePath = path.join(_config.appDownloadPath,app.appId);
+    var filePath = path.join(_config.appDownloadPath,app.id);
     var file = fs.createWriteStream(filePath);
     var request = http.get(app.installUrl, function(response) {
       response.pipe(file);
       file.on("finish", function() {
         log("file downloaded");
         file.close(function() {
-          var appPath = path.join(_config.appsPath,app.appId);
+          var appPath = path.join(_config.appsPath,app.id);
           unzip(filePath, { dir: appPath }, function(err) {
             fs.unlink(filePath);
             cb(err);
@@ -98,23 +95,23 @@ module.exports = (function() {
   
   var _removeApp = function(app,cb) {
     var rimraf = require("rimraf");
-    var appPath = path.join(_config.appsPath,app.appId);
+    var appPath = path.join(_config.appsPath,app.id);
     rimraf(appPath,cb);
   };
   
   var _startApp = function(app, cb) {
-    _startAppActions(app.appId);
+    _startAppActions(app.id);
     
     var spawn = require('child_process').spawn;
     var nodePath = util.format("%snode",_config.nodePath);
-    var appArgs = util.format("index.js --appInst=%s --server=%s --port=%d", app.appId, _config.hostname, _config.port).split(" ");
+    var appArgs = util.format("index.js --appInst=%s --server=%s --port=%d", app.id, _config.hostname, _config.port).split(" ");
     appArgs = appArgs.concat(app.params.split(" "));
-    var cwd = path.resolve(util.format("%s/%s",_config.appsPath,app.appId));
+    var cwd = path.resolve(util.format("%s/%s",_config.appsPath,app.id));
   
     var out = fs.openSync(path.join(cwd,'./out.log'), 'a');
     var err = fs.openSync(path.join(cwd,'./out.log'), 'a');
     
-    _appStartCallbacks[app.appId] = cb;
+    _appStartCallbacks[app.id] = cb;
     log("starting app:");
     log("%s %j", nodePath, appArgs);
     log("cwd: %s", cwd);
@@ -130,7 +127,6 @@ module.exports = (function() {
     //for (var k in appActions) {
     //  delete appActions[k];
     //}
-    //delete _datasetData[_config.actionsDatasetId][appId];
   };
   
   var _appStartedCallback = function(instId) {
@@ -157,7 +153,7 @@ module.exports = (function() {
       }
       // Update local cache while waiting for sync.
       var publication = _getPublication("data-" + _config.appsInstalledDatasetId);
-      publication[app._id].status = app.status;
+      publication[app.id].status = app.status;
     });
   };
   
@@ -176,21 +172,15 @@ module.exports = (function() {
     var appActions = _getPublication("actions-" + action.appId);
     if (appActions[action.id]) {
       appActions[action.id].status = action.status;
-      _datasetData[_config.actionsDatasetId][action.id].status = action.status;
     } else {
       appActions[action.id] = action;
-      _datasetData[_config.actionsDatasetId][action.id] = action;
     }
   };
   
   var _executeAction = function(action, cb) {
-    var appCollection = _getPublication("data-" + _config.appsInstalledDatasetId);
-    var app = appCollection
     // Get the app.
-    var appDatasetData = _datasetData[_config.appsInstalledDatasetId];
-    var app = _.find(appDatasetData, function(v,k) {
-      return v.deviceId === _config.deviceId && v.appId === action.appId;
-    });
+    var appDataCollection = _getPublication("data-" + _config.appsInstalledDatasetId);
+    var app = appDataCollection[action.appId];
     if (app) {
       var result = false;
       switch (action.action) {

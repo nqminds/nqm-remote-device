@@ -12,8 +12,7 @@ module.exports = (function() {
       // Create action.
       var action = {
         id: shortId.generate(),
-        deviceId: config.deviceId,
-        appId: app.appId,
+        appId: app.id,
         action: status,
         timestamp: Date.now(),
         status: "pending"

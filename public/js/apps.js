@@ -60,7 +60,7 @@ function appListClick(item, propertySheet) {
   activeItem = item;
   
   var bind = {
-    appId: item.appId,
+    appId: item.id,
     params: item.params,
     title: item.title,
     installUrl: item.installUrl,

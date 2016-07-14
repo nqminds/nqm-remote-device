@@ -56,6 +56,7 @@ module.exports = (function() {
       var up = url.parse(request.url);
       var q = querystring.parse(up.query);
       if (q.access_token) {
+        _tdxAccessToken = q.access_token;
         _subscriptionManager.setAccessToken(q.access_token);
         response.writeHead(301, {Location: config.hostURL});
         response.end();
@@ -63,6 +64,7 @@ module.exports = (function() {
     });
     
     app.get("/logout", function(request, response) {
+      _tdxAccessToken = "";
       _tdxLogin("");
       response.redirect("/login");
     });
@@ -74,7 +76,7 @@ module.exports = (function() {
     });
   
     _tdxConnection.start(config, tdxConnectionHandler);
-    _appServer.start(_datasetData, config, server, _tdxConnection);
+    _appServer.start(config, server, _tdxConnection);
     _subscriptionManager.initialise(config, _tdxConnection, _appServer);
   };
   

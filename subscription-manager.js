@@ -4,7 +4,6 @@ module.exports = (function() {
   var log = require("debug")("nqm:subscription-manager");
   var _tdxObservers = {};
   var _datasets = {};
-  var _datasetData = {};
   var _config = null;
   var _tdxConnection = null;
   var _appServer = null;
@@ -26,13 +25,13 @@ module.exports = (function() {
     }
   };
   
-  var _tdxLogin = function(accessToken) {
-    _tdxAccessToken = accessToken;
-    if (_tdxAccessToken.length > 0) {
-      _tdxConnection.authenticate(_tdxAccessToken, function(err, result) {
+  var _tdxLogin = function(accessToken, cb) {
+    cb = cb || function() {};
+    if (accessToken.length > 0) {
+      _tdxConnection.authenticate(accessToken, function(err, result) {
         if (err) {
           log("tdx connection auth error %s", err.message);
-          _tdxAccessToken = "";
+          accessToken = "";
         } else {
           log("tdx connection auth result ", result);
           var datasetCollection = _appServer.getPublication("AS.Resource");
@@ -41,6 +40,7 @@ module.exports = (function() {
           _observeDataset(_config.actionsDatasetId, actionHandler(_config.actionsDatasetId));
           _observeDataset(_config.configurationDatasetId, configurationHandler(_config.configurationDatasetId));
         }
+        cb(accessToken);
       });
     } else {
       // TODO - notify ddp clients that tdx is down?
@@ -50,6 +50,46 @@ module.exports = (function() {
   var _startSync = function(collection) {
     for (var k in collection) {
       delete collection[k];
+    }
+  };
+  
+  var _tdxDatasetObserver = function(datasetId, handler) {
+    return {
+      added: function(id) {
+        log("got dataset %s", id);
+        var dataset = _tdxConnection.collection("AS.Resource")[id];
+        if (dataset.id === datasetId) {
+          log("content is ", dataset);
+          // Store dataset in local cache.
+          var collection = _appServer.getPublication("AS.Resource");
+          collection[id] = dataset;
+          _datasets[dataset.id] = dataset;
+          var dataCollectionName = "data-" + dataset.id;
+          var dataCollection = _appServer.getPublication(dataCollectionName);
+          if (!_tdxObservers[dataCollectionName]) {
+            _tdxObservers[dataCollectionName] = _tdxConnection.observe("DatasetData", _tdxDatasetDataObserver(dataset, handler));
+          }
+          _startSync(dataCollection);
+          // Subscribe to dataset data 
+          _tdxConnection.subscribe("datasetData", [dataset.id]);
+        }
+      },
+      changed: function(id, oldFields, clearedFields, newFields) {
+        var dataset = _tdxConnection.collection("AS.Resource")[id];
+        if (dataset.id === datasetId) {
+          var collection = _appServer.getPublication("AS.Resource");
+          collection[id] = dataset;
+          _datasets[dataset.id] = dataset;
+        }
+      },
+      removed: function(id, oldValue) {
+        var collection = _appServer.getPublication("AS.Resource");
+        var dataset = collection[id];
+        if (dataset.id === datasetId) {
+          delete _datasets[dataset.id];
+          delete collection[id];
+        }
+      }
     }
   };
   
@@ -67,7 +107,6 @@ module.exports = (function() {
           collection[key] = newDoc; 
           
           // Store in local cache.
-          _datasetData[dataset.id][key] = newDoc;
           handler.added(newDoc); 
         }
       },
@@ -79,9 +118,7 @@ module.exports = (function() {
           // Get the publication.
           var collection = handler.getCollection(current);
           var key = handler.getKey(current);
-          
-          _datasetData[dataset.id][key] = current;
-          
+                    
           // Update publication and local cache.
           for (var clear in clearedFields) {
             delete collection[key][clear];
@@ -98,54 +135,11 @@ module.exports = (function() {
           var key = handler.getKey(oldValue);
           handler.removed(oldValue);
           delete collection[key];
-          delete _datasetData[dataset.id][key];
         }
       }
     };
   };
     
-  var _tdxDatasetObserver = function(datasetId, handler) {
-    return {
-      added: function(id) {
-        log("got dataset %s", id);
-        var dataset = _tdxConnection.collection("AS.Resource")[id];
-        if (dataset.id === datasetId) {
-          log("content is ", dataset);
-          // Store dataset in local cache.
-          var collection = _appServer.getPublication("AS.Resource");
-          collection[id] = dataset;
-          _datasets[dataset.id] = dataset;
-          _datasetData[dataset.id] = {};
-          var dataCollectionName = "data-" + dataset.id;
-          var dataCollection = _appServer.getPublication(dataCollectionName);
-          if (!_tdxObservers[dataCollectionName]) {
-            _tdxObservers[dataCollectionName] = _tdxConnection.observe("DatasetData", _tdxDatasetDataObserver(dataset, handler));
-          }
-          _startSync(dataCollection);
-          // Subscribe to dataset data 
-          _tdxConnection.subscribe("datasetData", [dataset.id, { deviceId: _config.deviceId }]);
-        }
-      },
-      changed: function(id, oldFields, clearedFields, newFields) {
-        var dataset = _tdxConnection.collection("AS.Resource")[id];
-        if (dataset.id === datasetId) {
-          var collection = _appServer.getPublication("AS.Resource");
-          collection[id] = dataset;
-          _datasets[dataset.id] = dataset;
-        }
-      },
-      removed: function(id, oldValue) {
-        var collection = _appServer.getPublication("AS.Resource");
-        var dataset = collection[id];
-        if (dataset.id === datasetId) {
-          delete _datasets[dataset.id];
-          delete _datasetData[dataset.id];
-          delete collection[id];
-        }
-      }
-    }
-  };
-  
   return {
     initialise: _initialise,
     setAccessToken: _tdxLogin

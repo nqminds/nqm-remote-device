@@ -1,5 +1,6 @@
 {
-  "xrhUrl": "ws://tbx.nqminds.com/websocket",
-  "xrhServer": "192.168.1.98",
-  "xrhPort": 2222
+  "commandURL": "https://cmd.nqminds.com",
+  "queryURL": "https://q.nqminds.com/v1",
+  "token": "S1xzR7U2M",
+  "secret": "password"
 }

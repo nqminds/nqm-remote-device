@@ -18,8 +18,6 @@ module.exports = (function() {
     _config = config;
     
     _ddpClient = new DDPClient({
-      host : _config.xrhServer,
-      port : _config.xrhPort,
       ssl  : _config.ssl || false,
       autoReconnect : true,
       autoReconnectTimer : _config.autoReconnectTimer || 5000,

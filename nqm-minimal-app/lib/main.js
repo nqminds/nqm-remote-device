@@ -4,13 +4,18 @@
 
 module.exports = (function() {
   var log = require("debug")("AppProcess");
-  var DDPClient = require("ddp");
+  var util = require("util");
   var config = require("./config.json");
+  var TDX_API = require("nqm-api-tdx");
   
   function AppProcess(args, watchdog) {
     this._args = require("minimist")(args);
     this._watchdog = watchdog;
     this._temperature = 20;
+    this._api = new TDX_API({
+      baseCommandURL: config.commandURL || "https://cmd.nqminds.com",
+      baseQueryURL: config.queryURL || "https://q.nqminds.com/v1"
+    });
   }
   
   var simulateData = function() {
@@ -20,7 +25,8 @@ module.exports = (function() {
       timestamp: Date.now(),
       temperature: self._temperature 
     };
-    self._ddpClient.call("/app/dataset/data/create",[this._args.datasetId, data], function(err) {
+
+    self._api.addDatasetData(this._accessToken, this._args.datasetId, data, function(err,result) {
       if (err) {
         log("failed to send temperature data: %s", err.message);
       } else {
@@ -31,42 +37,14 @@ module.exports = (function() {
   
   AppProcess.prototype.run = function() {
     var self = this;
-    
-    self._ddpClient = new DDPClient({
-      url: config.xrhUrl || "",
-      host : config.xrhServer,
-      port : config.xrhPort,
-      ssl  : config.ssl || false,
-      autoReconnect : true,
-      autoReconnectTimer : config.autoReconnectTimer || 5000,
-      maintainCollections : false,
-      ddpVersion : '1',
-      useSockJs: false
-    });
-  
-    self._ddpClient.connect(function(err, reconnect) {
+
+    this._api.authenticate(config.token, config.secret, function(err, token) {
       if (err) {
-        log("DDP connection error: " + err.toString());
-        self._connected = false;
+        log("failed to authenticate tdx api: [%s]", err.message);
       } else {
-        self._connected = true;
-        if (reconnect) {
-          log("DDP re-connected");
-        } else {
-          log("DDP connected");
-        }
+        self._accessToken = token;
         setInterval(function() { simulateData.call(self); }, config.simulateInterval || 10000);
       }
-    });
-  
-    self._ddpClient.on("socket-close", function() {
-      log("DDP socket closed");
-      self._connected = false;
-    });
-  
-    self._ddpClient.on("socket-error", function(err) {
-      log("DDP socket error: %s",err.message);
-      self._connected = false;
     });
   };
   
