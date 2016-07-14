@@ -15,6 +15,7 @@ module.exports = (function() {
   var _ = require("lodash");
   var _tdxAccessToken = "";
   var _subscriptionManager = require("./subscription-manager");
+  var _cache = require("./cache.js");
 
   var tdxConnectionHandler = function(err, reconnect) {
     if (!err) {
@@ -33,7 +34,8 @@ module.exports = (function() {
     app.set("views", __dirname + "/views");
     app.set('view engine', 'jade');
     app.use(express.static(__dirname  + '/public'));
-  
+    app.use('/viewer', express.static('node_modules/node-viewerjs/release'));
+    
     app.get('/', function (req, res) {
       if (!_tdxAccessToken || _tdxAccessToken.length === 0) {
         res.redirect("/login");
