@@ -63,6 +63,16 @@ module.exports = (function() {
       }
     });
     
+    app.get("/files", function(request, response) {
+
+      if (!_tdxAccessToken || _tdxAccessToken.length === 0) response.redirect("/login");
+
+      else {
+        _cache.getFiles(response, _tdxAccessToken);
+        
+      }
+    });
+    
     app.get("/logout", function(request, response) {
       _tdxAccessToken = "";
       _tdxLogin("");
