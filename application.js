@@ -15,6 +15,8 @@ module.exports = (function() {
   var _ = require("lodash");
   var _tdxAccessToken = "";
   var _subscriptionManager = require("./subscription-manager");
+  var _fileViewer = require("./fileViewer.js");
+
 
   var tdxConnectionHandler = function(err, reconnect) {
     if (!err) {
@@ -28,12 +30,16 @@ module.exports = (function() {
   };
   
   var _start = function(config) {  
+
+
+    
     var app = express();
   
     app.set("views", __dirname + "/views");
     app.set('view engine', 'jade');
     app.use(express.static(__dirname  + '/public'));
-  
+    app.use('/viewer', express.static('node_modules/node-viewerjs/release'));
+
     app.get('/', function (req, res) {
       if (!_tdxAccessToken || _tdxAccessToken.length === 0) {
         res.redirect("/login");
@@ -60,6 +66,15 @@ module.exports = (function() {
         _subscriptionManager.setAccessToken(q.access_token);
         response.writeHead(301, {Location: config.hostURL});
         response.end();
+      }
+    });
+    
+    app.get("/files", function(request, response) {
+
+      if (!_tdxAccessToken || _tdxAccessToken.length === 0) response.redirect("/login");
+
+      else {
+        _fileViewer.start(_tdxAccessToken, response);    
       }
     });
     
